@@ -26,15 +26,14 @@ namespace TextureCompressor
             {
                 foreach (GameDatabase.TextureInfo t in GameDatabase.Instance.databaseTexture)
                 {
-                    Log("name: " + t.name);
-                    Log("format: " + t.texture.format.ToString());
+                    //Log("name: " + t.name);
+                    //Log("format: " + t.texture.format.ToString());
                     try
                     {
                         t.texture.GetPixel(0,0);
                         if (t.isReadable && t.texture.format.ToString() != TextureFormat.DXT1.ToString() && t.texture.format.ToString() != TextureFormat.DXT5.ToString())
                         {
-
-                            Log("Compressing...");
+                            Log("Compressing... " + t.name);
                             t.texture.Compress(true);
                         }
                     }
