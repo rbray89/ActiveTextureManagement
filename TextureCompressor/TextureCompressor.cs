@@ -11,41 +11,45 @@ namespace TextureCompressor
     {
         static bool Compressed = false;
 
-        protected void Awake()
+        protected void Update()
         {
-
-            if (HighLogic.LoadedScene == GameScenes.MAINMENU)
+            if (!Compressed)
             {
                 CompressAllTextures();
+                if (HighLogic.LoadedScene == GameScenes.MAINMENU)
+                {
+                    Compressed = true;
+                    // empty the cache when we are done
+                    processedTexture = null;
+                }
             }
         }
 
+        Dictionary<GameDatabase.TextureInfo, bool> processedTexture = new Dictionary<GameDatabase.TextureInfo, bool>();
+
         private void CompressAllTextures()
         {
-            if(!Compressed)
+            foreach (GameDatabase.TextureInfo t in GameDatabase.Instance.databaseTexture)
             {
-                foreach (GameDatabase.TextureInfo t in GameDatabase.Instance.databaseTexture)
-                {
-                    //Log("name: " + t.name);
-                    //Log("format: " + t.texture.format.ToString());
+                //Log("name: " + t.name);
+                //Log("format: " + t.texture.format.ToString());
+                if (!processedTexture.ContainsKey(t))
                     try
                     {
-                        t.texture.GetPixel(0,0);
-                        if (t.isReadable && t.texture.format.ToString() != TextureFormat.DXT1.ToString() && t.texture.format.ToString() != TextureFormat.DXT5.ToString())
+                        t.texture.GetPixel(0, 0);
+                        if (t.isReadable && t.texture.format != TextureFormat.DXT1 && t.texture.format != TextureFormat.DXT5)
                         {
                             Log("Compressing... " + t.name);
                             t.texture.Compress(true);
+                            processedTexture[t] = true;
                         }
+                        else
+                            processedTexture[t] = false;
                     }
-                    catch(UnityException e)
+                    catch (UnityException)
                     {
-
+                        processedTexture[t] = false;
                     }
-                    
-                }
-
-
-                Compressed = true;
             }
         }
 
