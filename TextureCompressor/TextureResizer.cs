@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
@@ -19,12 +20,11 @@ namespace TextureCompressor
             {
                 for (int w = 0; w < width; w++)
                 {
-                    newPixels[index] = GetPixel(pixels, texture, ((float)w) / width, ((float)h) / height, width, height);
-                    index++;
+                    newPixels[index++] = GetPixel(pixels, texture, ((float)w) / width, ((float)h) / height, width, height);
                 }
             }
             texture.Resize(width, height, format, mipmaps);
-            texture.SetPixels32(pixels);
+            texture.SetPixels32(newPixels);
             texture.Apply(mipmaps);
         }
 

@@ -264,6 +264,7 @@ namespace TextureCompressor
                         if (File.Exists(path+".origN"))
                         {
                             Texture.isNormalMap = true;
+                            Texture.texture.SetPixels32(GameDatabase.Instance.GetTexture(Texture.name, true).GetPixels32());
                         }
                         else
                         {
@@ -357,14 +358,14 @@ namespace TextureCompressor
             int width = tex.width;
             int height = tex.height;
             bool hasMipmaps = tex.mipmapCount == 1 ? false : true;
-            if ((mipmaps || format != originalFormat) && scale == 1 && (max_size == 0 || (width <= max_size && height <= max_size)))
+            if ((mipmaps != hasMipmaps || format != originalFormat) && scale == 1 && (max_size == 0 || (width <= max_size && height <= max_size)))
             {
                 Color32[] pixels = tex.GetPixels32();
                 tex.Resize(width, height, format, mipmaps);
                 tex.SetPixels32(pixels);
                 tex.Apply(mipmaps);
             }
-            else
+            else if (scale != 1 || (max_size != 0 && (width > max_size && height > max_size)))
             {
                 width = tex.width / scale;
                 height = tex.height / scale;
