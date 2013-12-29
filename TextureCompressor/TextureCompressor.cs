@@ -20,6 +20,7 @@ namespace TextureCompressor
         static ConfigNode overrides;
         static ConfigNode overridesFolders;
         static List<String> overridesFolderList = new List<string>();
+        static List<String> foldersList = new List<string>();
 
         static bool mipmaps = false;
         static bool compress = true;
@@ -34,6 +35,7 @@ namespace TextureCompressor
 
         protected void Awake()
         {
+            PopulateConfig();
             if (HighLogic.LoadedScene == GameScenes.MAINMENU && !Compressed)
             {
                 Update();
@@ -55,8 +57,14 @@ namespace TextureCompressor
             }
             if(!Converted)
             {
-                String[] allfiles = System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/", "*.mbm", System.IO.SearchOption.AllDirectories);
-                
+                List<String> allfiles = new List<string>();
+                foreach (String folder in foldersList)
+                {
+                    if (System.IO.Directory.Exists(KSPUtil.ApplicationRootPath + "GameData/" + folder))
+                    {
+                        allfiles.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/" + folder, "*.mbm", System.IO.SearchOption.AllDirectories));
+                    }
+                }
                 foreach (String file in allfiles)
                 {
                     FileStream stream = new FileStream(file, FileMode.Open, FileAccess.ReadWrite);
@@ -64,10 +72,8 @@ namespace TextureCompressor
                     if(stream.ReadByte() == 1)
                     {
                         stream.Position = 12;
-                        //stream.WriteByte(0x00);
                         String unixPath = file.Replace('\\', '/');
                         stream.Close();
-                        //MBMToPNG(file);
                         MBMToTGA(file);
                         File.Move(file, file+".origN");
                     }
@@ -75,8 +81,30 @@ namespace TextureCompressor
                     {
                         stream.Close();
                         MBMToPNG(file);
-                        //MBMToTGA(file);
                         File.Move(file, file + ".orig");
+                    }
+                }
+                List<String> mbms = new List<string>();
+                mbms.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/", "*mbm.origN", System.IO.SearchOption.AllDirectories));
+                mbms.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/", "*mbm.orig", System.IO.SearchOption.AllDirectories));
+                String pathStart = (KSPUtil.ApplicationRootPath + "GameData/").Replace('\\', '/');
+                foreach (String file in mbms)
+                {
+                    String path = file.Replace(pathStart, "");
+                    String unixPath = path.Replace('\\', '/');
+
+                    if (!foldersList.Exists(n => unixPath.StartsWith(n)))
+                    {
+                        String replacement = pathStart + unixPath.Replace(".mbm.origN", ".tga");
+                        replacement = replacement.Replace(".mbm.orig", ".png");
+                        String mbm = pathStart + unixPath.Replace(".origN", "");
+                        mbm = mbm.Replace(".orig", "");
+                        path = pathStart + unixPath;
+                        if (File.Exists(replacement))
+                        {
+                            File.Delete(replacement);
+                        }
+                        File.Move(path, mbm);
                     }
                 }
                 imageBuffer = null;
@@ -213,6 +241,52 @@ namespace TextureCompressor
 
         protected void Update()
         {
+            PopulateConfig();
+
+            if (!Compressed && GameDatabase.Instance.databaseTexture.Count > 0)
+            {
+                int LocalLastTextureIndex = GameDatabase.Instance.databaseTexture.Count-1;
+                if (LastTextureIndex != LocalLastTextureIndex)
+                {
+                    for (int i = LastTextureIndex + 1; i < GameDatabase.Instance.databaseTexture.Count; i++)
+                    {
+                        GameDatabase.TextureInfo Texture = GameDatabase.Instance.databaseTexture[i];
+                        LastTextureIndex = i;
+
+                        if (Texture.name.Length > 0 && foldersList.Exists(n => Texture.name.StartsWith(n)))
+                        {
+                            String path = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".mbm";
+                            if (File.Exists(path + ".origN"))
+                            {
+                                Texture.isNormalMap = true;
+                                //Texture.texture.SetPixels32(GameDatabase.Instance.GetTexture(Texture.name, true).GetPixels32());
+                            }
+                            else
+                            {
+                                Texture.isNormalMap = false;
+                            }
+                            ConfigNode overrideNode = overrides.GetNode(Texture.name);
+                            string folder = overridesFolderList.Find(n => Texture.name.StartsWith(n));
+                            if (overrideNode != null)
+                            {
+                                ApplyNodeSettings(Texture, overrideNode);
+                            }
+                            else if (folder != null)
+                            {
+                                ConfigNode overrideFolder = overridesFolders.GetNode(folder);
+                            }
+                            else
+                            {
+                                ApplySettings(Texture);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void PopulateConfig()
+        {
             if (config == null)
             {
                 String configString = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressor.cfg";
@@ -220,9 +294,14 @@ namespace TextureCompressor
                 config = settings.GetNode("COMPRESSOR");
                 overrides = settings.GetNode("OVERRIDES");
                 overridesFolders = settings.GetNode("OVERRIDES_FOLDERS");
+                ConfigNode folders = settings.GetNode("FOLDERS");
                 foreach (ConfigNode node in overridesFolders.nodes)
                 {
                     overridesFolderList.Add(node.name);
+                }
+                foreach (ConfigNode.Value folder in folders.values)
+                {
+                    foldersList.Add(folder.value);
                 }
 
 
@@ -231,7 +310,7 @@ namespace TextureCompressor
                 String discard_alphaString = config.GetValue("discard_alpha");
                 String scaleString = config.GetValue("scale");
                 String max_sizeString = config.GetValue("max_size");
-                
+
                 bool.TryParse(mipmapsString, out mipmaps);
                 bool.TryParse(compressString, out compress);
                 bool.TryParse(discard_alphaString, out discard_alpha);
@@ -243,49 +322,12 @@ namespace TextureCompressor
                 String discard_alphaString_normals = config.GetValue("discard_alpha_normals");
                 String scaleString_normals = config.GetValue("scale_normals");
                 String max_sizeString_normals = config.GetValue("max_size_normals");
-                
+
                 bool.TryParse(mipmapsString_normals, out mipmaps_normals);
                 bool.TryParse(compressString_normals, out compress_normals);
                 bool.TryParse(discard_alphaString_normals, out discard_alpha_normals);
                 int.TryParse(scaleString_normals, out scale_normals);
                 int.TryParse(max_sizeString_normals, out max_size_normals);
-            }
-
-            if (!Compressed && GameDatabase.Instance.databaseTexture.Count > 0)
-            {
-                int LocalLastTextureIndex = GameDatabase.Instance.databaseTexture.Count-1;
-                if (LastTextureIndex != LocalLastTextureIndex)
-                {
-                    for (int i = LastTextureIndex + 1; i < GameDatabase.Instance.databaseTexture.Count; i++)
-                    {
-                        GameDatabase.TextureInfo Texture = GameDatabase.Instance.databaseTexture[i];
-                        LastTextureIndex = i;
-                        String path = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".mbm";
-                        if (File.Exists(path+".origN"))
-                        {
-                            Texture.isNormalMap = true;
-                            //Texture.texture.SetPixels32(GameDatabase.Instance.GetTexture(Texture.name, true).GetPixels32());
-                        }
-                        else
-                        {
-                            Texture.isNormalMap = false;
-                        }
-                        ConfigNode overrideNode = overrides.GetNode(Texture.name);
-                        string folder = overridesFolderList.Find(n => Texture.name.StartsWith(n));
-                        if(overrideNode != null)
-                        {
-                            ApplyNodeSettings(Texture, overrideNode);
-                        }
-                        else if(folder != null)
-                        {
-                            ConfigNode overrideFolder = overridesFolders.GetNode(folder);
-                        }
-                        else 
-                        {
-                            ApplySettings(Texture);
-                        }
-                    }
-                }
             }
         }
 
@@ -448,7 +490,6 @@ namespace TextureCompressor
             int saved = (oldSize - newSize);
             if (saved > 0)
             {
-                Log("Saved: " + saved.ToString() + "B");
                 memorySaved += saved;
             }
 
