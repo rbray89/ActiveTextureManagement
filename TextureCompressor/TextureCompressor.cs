@@ -264,7 +264,7 @@ namespace TextureCompressor
                         if (File.Exists(path+".origN"))
                         {
                             Texture.isNormalMap = true;
-                            Texture.texture.SetPixels32(GameDatabase.Instance.GetTexture(Texture.name, true).GetPixels32());
+                            //Texture.texture.SetPixels32(GameDatabase.Instance.GetTexture(Texture.name, true).GetPixels32());
                         }
                         else
                         {
