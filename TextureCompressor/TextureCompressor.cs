@@ -522,10 +522,20 @@ namespace TextureCompressor
                         height = max_size;
                     }
                 }
+                int tmpScale = scale;
+                while (width < 2 && tmpScale > 0)
+                {
+                    width = tex.width / --tmpScale;
+                }
+                tmpScale = scale;
+                while (height < 2 && tmpScale > 0)
+                {
+                    height = tex.height / --tmpScale;
+                }
                 TextureResizer.Resize(tex, width, height, format, mipmaps);
             }
             
-            if (compress)
+            if (compress && width > 1 && height > 1)
             {
                 tex.Compress(true);
             }
