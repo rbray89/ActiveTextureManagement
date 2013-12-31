@@ -86,15 +86,15 @@ namespace TextureCompressor
                     }
                 }
                 List<String> mbms = new List<string>();
-                mbms.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/", "*mbm.origN", System.IO.SearchOption.AllDirectories));
-                mbms.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/", "*mbm.orig", System.IO.SearchOption.AllDirectories));
+                mbms.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/", "*.mbm.origN", System.IO.SearchOption.AllDirectories));
+                mbms.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/", "*.mbm.orig", System.IO.SearchOption.AllDirectories));
                 String pathStart = (KSPUtil.ApplicationRootPath + "GameData/").Replace('\\', '/');
                 foreach (String file in mbms)
                 {
                     String path = file.Replace(pathStart, "");
                     String unixPath = path.Replace('\\', '/');
 
-                    if (!foldersList.Exists(n => unixPath.StartsWith(n)))
+                    if (foldersList.Exists(n => unixPath.StartsWith(n)))
                     {
                         String replacement = pathStart + unixPath.Replace(".mbm.origN", ".tga");
                         replacement = replacement.Replace(".mbm.orig", ".png");
