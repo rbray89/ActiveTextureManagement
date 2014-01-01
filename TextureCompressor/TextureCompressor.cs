@@ -54,6 +54,44 @@ namespace TextureCompressor
                     Log("Format: " + texture.format.ToString());
                     Log("MipMaps: " + texture.mipmapCount.ToString());
                     Log("Size: " + texture.width.ToString() + "x" + texture.height);
+                    if (texture.name.Length > 0 && foldersList.Exists(n => texture.name.StartsWith(n)))
+                    {
+                        bool mipmaps = false;
+                        bool makeNotReadable = false;
+                        ConfigNode overrideNode = overrides.GetNode(Texture.name);
+                        string folder = overridesFolderList.Find(n => Texture.name.StartsWith(n));
+                        if (overrideNode != null)
+                        {
+                            String mipmapsString = overrideNode.GetValue("mipmaps");
+                            String make_not_readableString = overrideNode.GetValue("make_not_readable");
+                            bool.TryParse(mipmapsString, out mipmaps);
+                            bool.TryParse(make_not_readableString, out makeNotReadable);
+                        }
+                        else if (folder != null)
+                        {
+                            String mipmapsString = overridesFolders.GetValue("mipmaps");
+                            String make_not_readableString = overridesFolders.GetValue("make_not_readable");
+                            bool.TryParse(mipmapsString, out mipmaps);
+                            bool.TryParse(make_not_readableString, out makeNotReadable);
+                        }
+                        else
+                        {
+                            mipmaps = TextureCompressor.config_mipmaps;
+                            makeNotReadable = TextureCompressor.config_make_not_readable;
+                            if (Texture.isNormalMap)
+                            {
+                                mipmaps = TextureCompressor.config_mipmaps_normals;
+                            }
+                        }
+                        if (readableList.Contains(texture.name))
+                        {
+                            texture.Apply(mipmaps); 
+                        }
+                        else
+                        {
+                            texture.Apply(mipmaps, makeNotReadable);
+                        }
+                    }
                 }
                 imageBuffer = null;
             }
@@ -540,14 +578,7 @@ namespace TextureCompressor
                 tex.Compress(true);
             }
             tex.filterMode = filterMode;
-            if (readableList.Contains(tex.name))
-            {
-                tex.Apply(mipmaps); 
-            }
-            else
-            {
-                tex.Apply(mipmaps, makeNotReadable);
-            }
+            tex.Apply(mipmaps);
 
             int oldSize = 0;
             int newSize = 0;
