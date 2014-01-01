@@ -41,11 +41,7 @@ namespace TextureCompressor
             {
                 Update();
                 Compressed = true;
-                int kbSaved = (int) (memorySaved / 1024f);
-                int mbSaved = (int)((memorySaved / 1024f) / 1024f);
-                Log("Memory Saved : "+ memorySaved.ToString() + "B");
-                Log("Memory Saved : " + kbSaved.ToString() + "kB");
-                Log("Memory Saved : " + mbSaved.ToString() + "MB");
+                
                 foreach(GameDatabase.TextureInfo Texture in GameDatabase.Instance.databaseTexture)
                 {
                     Texture2D texture = Texture.texture;
@@ -56,6 +52,8 @@ namespace TextureCompressor
                     Log("Size: " + texture.width.ToString() + "x" + texture.height);
                     if (texture.name.Length > 0 && foldersList.Exists(n => texture.name.StartsWith(n)))
                     {
+                        try { Texture.texture.GetPixel(0, 0); }
+                        catch { return; }
                         bool mipmaps = false;
                         bool makeNotReadable = false;
                         ConfigNode overrideNode = overrides.GetNode(Texture.name);
@@ -93,6 +91,11 @@ namespace TextureCompressor
                         }
                     }
                 }
+                int kbSaved = (int)(memorySaved / 1024f);
+                int mbSaved = (int)((memorySaved / 1024f) / 1024f);
+                Log("Memory Saved : " + memorySaved.ToString() + "B");
+                Log("Memory Saved : " + kbSaved.ToString() + "kB");
+                Log("Memory Saved : " + mbSaved.ToString() + "MB");
                 imageBuffer = null;
             }
             if(!Converted)
@@ -522,6 +525,8 @@ namespace TextureCompressor
 
         private void UpdateTex(GameDatabase.TextureInfo Texture, bool compress, bool mipmaps, int scale, FilterMode filterMode, bool makeNotReadable, int max_size = 0)
         {
+            try { Texture.texture.GetPixel(0, 0); }
+            catch { return; }
             Texture2D tex = Texture.texture;
             TextureFormat originalFormat = tex.format;
             TextureFormat format = tex.format;
