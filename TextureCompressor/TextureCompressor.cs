@@ -22,6 +22,7 @@ namespace TextureCompressor
         static List<String> overridesFolderList = new List<string>();
         static List<String> foldersList = new List<string>();
         static List<String> readableList = new List<string>();
+        static List<String> normalList = new List<string>();
 
         static bool config_mipmaps = false;
         static bool config_compress = true;
@@ -52,8 +53,10 @@ namespace TextureCompressor
                     Log("Size: " + texture.width.ToString() + "x" + texture.height);
                     if (texture.name.Length > 0 && foldersList.Exists(n => texture.name.StartsWith(n)))
                     {
-                        try { Texture.texture.GetPixel(0, 0); }
-                        catch { return; }
+                        if(!Texture.isReadable)
+                        {
+                            continue;
+                        }
                         bool mipmaps = false;
                         bool makeNotReadable = false;
                         ConfigNode overrideNode = overrides.GetNode(Texture.name);
@@ -81,11 +84,7 @@ namespace TextureCompressor
                                 mipmaps = TextureCompressor.config_mipmaps_normals;
                             }
                         }
-                        if (readableList.Contains(texture.name))
-                        {
-                            texture.Apply(mipmaps); 
-                        }
-                        else
+                        if (!readableList.Contains(texture.name))
                         {
                             texture.Apply(mipmaps, makeNotReadable);
                         }
@@ -350,6 +349,27 @@ namespace TextureCompressor
             }
         }
 
+        private void PNGToTexture(string name, GameDatabase.TextureInfo texture)
+        {
+            FileStream mbmStream = new FileStream(KSPUtil.ApplicationRootPath + "GameData/" + name + ".png", FileMode.Open, FileAccess.Read);
+            mbmStream.Position = 0;
+            mbmStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
+            mbmStream.Close();
+
+            Texture2D tex = texture.texture;
+            tex.LoadImage(imageBuffer);
+            tex.Apply(true, false);
+            if (!texture.isNormalMap)
+            {
+                texture.isCompressed = true;
+                tex.Compress(true);
+            }
+            else
+            {
+                texture.isCompressed = false;
+            }
+        }
+
         protected void Update()
         {
             PopulateConfig();
@@ -364,30 +384,54 @@ namespace TextureCompressor
                         GameDatabase.TextureInfo Texture = GameDatabase.Instance.databaseTexture[i];
                         LastTextureIndex = i;
                         String mbmPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".mbm";
-                        if (File.Exists(mbmPath + ".origN") || Texture.name.EndsWith("_NRM"))
+                        String pngPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".png";
+
+                        Texture.isNormalMap = Texture.name.EndsWith("_NRM") || normalList.Contains(Texture.name);
+                        try { Texture.texture.GetPixel(0, 0); }
+                        catch
                         {
-                            Texture.isNormalMap = true;
-                        }
-                        else
-                        {
-                            Texture.isNormalMap = false;
-                        }
-                        if (File.Exists(mbmPath))
-                        {
-                            Texture2D tex = new Texture2D(2,2);
-                            String name;
-                            if (Texture.texture.name != "")
+                            //Log("Converting Unreadable... " + Texture.name + " " + Texture.isNormalMap);
+                            if (File.Exists(mbmPath))
                             {
-                                name = Texture.texture.name;
+                                Texture2D tex = new Texture2D(2, 2);
+                                String name;
+                                if (Texture.texture.name.Length > 0)
+                                {
+                                    name = Texture.texture.name;
+                                }
+                                else
+                                {
+                                    name = Texture.name;
+                                }
+                                Texture2D.DestroyImmediate(Texture.texture);
+                                Texture = GameDatabase.Instance.databaseTexture[i] = new GameDatabase.TextureInfo(tex, true, true, true);
+                                MBMToTexture(name, Texture);
+                                Texture.name = name;
+                                tex.name = name;
                             }
-                            else
+                            else if (File.Exists(pngPath))
                             {
-                                name = Texture.name;
+                                Texture2D tex = new Texture2D(2, 2);
+                                String name;
+                                if (Texture.texture.name.Length > 0)
+                                {
+                                    name = Texture.texture.name;
+                                }
+                                else
+                                {
+                                    name = Texture.name;
+                                }
+                                Texture2D.DestroyImmediate(Texture.texture);
+                                Texture = GameDatabase.Instance.databaseTexture[i] = new GameDatabase.TextureInfo(tex, true, true, true);
+                                PNGToTexture(name, Texture);
+                                Texture.name = name;
+                                tex.name = name;
                             }
-                            tex.name = name;
-                            Texture = GameDatabase.Instance.databaseTexture[i] = new GameDatabase.TextureInfo(tex, true, true, true);
-                            Texture.name = name;
-                            MBMToTexture(Texture.name, Texture);
+                            if (Texture.name.EndsWith("_NRM") || normalList.Contains(Texture.name))
+                            {
+                                //override mistakes in mbm normal setting
+                                Texture.isNormalMap = true;
+                            }
                         }
                         if (Texture.name.Length > 0 && foldersList.Exists(n => Texture.name.StartsWith(n)))
                         {
@@ -405,6 +449,23 @@ namespace TextureCompressor
                             else
                             {
                                 ApplySettings(Texture);
+                            }
+
+                            if(Texture.isNormalMap)
+                            {
+                                if (Texture.texture.name.Length > 0)
+                                {
+                                    name = Texture.texture.name;
+                                }
+                                else
+                                {
+                                    name = Texture.name;
+                                }
+                                Texture2D orig = Texture.texture;
+                                Texture = GameDatabase.Instance.databaseTexture[i] = new GameDatabase.TextureInfo(GameDatabase.BitmapToUnityNormalMap(orig), true, false, Texture.isCompressed);
+                                Texture2D.DestroyImmediate(orig);
+                                Texture.name = name;
+                                Texture.texture.name = name;
                             }
                         }
                         else if(config_compress)
@@ -436,6 +497,7 @@ namespace TextureCompressor
                 overridesFolders = settings.GetNode("OVERRIDES_FOLDERS");
                 ConfigNode folders = settings.GetNode("FOLDERS");
                 ConfigNode readable = settings.GetNode("LEAVE_READABLE");
+                ConfigNode normals = settings.GetNode("NORMAL_LIST");
 
                 foreach (ConfigNode node in overridesFolders.nodes)
                 {
@@ -448,6 +510,10 @@ namespace TextureCompressor
                 foreach (ConfigNode.Value texture in readable.values)
                 {
                     readableList.Add(texture.value);
+                }
+                foreach (ConfigNode.Value texture in normals.values)
+                {
+                    normalList.Add(texture.value);
                 }
 
                 String mipmapsString = config.GetValue("mipmaps");
@@ -577,13 +643,22 @@ namespace TextureCompressor
                 }
                 TextureResizer.Resize(tex, width, height, format, mipmaps);
             }
-            
+
+            tex.filterMode = filterMode;
             if (compress && width > 1 && height > 1)
             {
                 tex.Compress(true);
             }
-            tex.filterMode = filterMode;
-            tex.Apply(mipmaps);
+            if (!makeNotReadable || Texture.isNormalMap || readableList.Contains(Texture.name))
+            {
+                tex.Apply(mipmaps);
+                Texture.isReadable = true;
+            }
+            else
+            {
+                tex.Apply(mipmaps, true);
+                Texture.isReadable = false;
+            }
 
             int oldSize = 0;
             int newSize = 0;
