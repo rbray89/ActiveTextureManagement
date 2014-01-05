@@ -349,17 +349,17 @@ namespace TextureCompressor
             }
         }
 
-        private void PNGToTexture(string name, GameDatabase.TextureInfo texture)
+        private void IMGToTexture(string file, GameDatabase.TextureInfo texture)
         {
-            FileStream mbmStream = new FileStream(KSPUtil.ApplicationRootPath + "GameData/" + name + ".png", FileMode.Open, FileAccess.Read);
-            mbmStream.Position = 0;
-            mbmStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
-            mbmStream.Close();
+            FileStream imgStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+            imgStream.Position = 0;
+            imgStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
+            imgStream.Close();
 
             Texture2D tex = texture.texture;
             tex.LoadImage(imageBuffer);
-            tex.Apply(true, false);
-            if (!texture.isNormalMap)
+            tex.Apply(false, false);
+            if (!texture.isNormalMap && !file.EndsWith(".tga"))
             {
                 texture.isCompressed = true;
                 tex.Compress(true);
@@ -385,6 +385,7 @@ namespace TextureCompressor
                         LastTextureIndex = i;
                         String mbmPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".mbm";
                         String pngPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".png";
+                        String tgaPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".tga";
 
                         Texture.isNormalMap = Texture.name.EndsWith("_NRM") || normalList.Contains(Texture.name);
                         try { Texture.texture.GetPixel(0, 0); }
@@ -409,8 +410,17 @@ namespace TextureCompressor
                                 Texture.name = name;
                                 tex.name = name;
                             }
-                            else if (File.Exists(pngPath))
+                            else if (File.Exists(pngPath) || File.Exists(tgaPath))
                             {
+                                string imgPath;
+                                if(File.Exists(pngPath))
+                                {
+                                    imgPath = pngPath;
+                                }
+                                else
+                                {
+                                    imgPath = tgaPath;
+                                }
                                 Texture2D tex = new Texture2D(2, 2);
                                 String name;
                                 if (Texture.texture.name.Length > 0)
@@ -423,7 +433,7 @@ namespace TextureCompressor
                                 }
                                 Texture2D.DestroyImmediate(Texture.texture);
                                 Texture = GameDatabase.Instance.databaseTexture[i] = new GameDatabase.TextureInfo(tex, true, true, true);
-                                PNGToTexture(name, Texture);
+                                IMGToTexture(imgPath, Texture);
                                 Texture.name = name;
                                 tex.name = name;
                             }
@@ -479,9 +489,18 @@ namespace TextureCompressor
 
         private void tryCompress(GameDatabase.TextureInfo Texture)
         {
-            if (Texture.texture.format != TextureFormat.DXT1 && Texture.texture.format != TextureFormat.DXT5)
+            Texture2D tex = Texture.texture;
+            if (tex.format != TextureFormat.DXT1 && tex.format != TextureFormat.DXT5)
             {
-                try { Texture.texture.GetPixel(0, 0); Texture.texture.Compress(true); }
+                try { 
+                    tex.GetPixel(0, 0);
+                    int originalWidth = tex.width;
+                    int originalHeight = tex.height;
+                    TextureFormat format = tex.format;
+                    bool mipmaps = tex.mipmapCount == 1 ? false : true;
+                    tex.Compress(true);
+                    updateMemoryCount(originalWidth, originalHeight, format, mipmaps, originalWidth, originalHeight, tex.format, mipmaps);
+                }
                 catch { }
             }
         }
@@ -490,14 +509,59 @@ namespace TextureCompressor
         {
             if (config == null)
             {
-                String configString = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressor.cfg";
+                String configString = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs/textureCompressor.cfg";
                 ConfigNode settings = ConfigNode.Load(configString);
                 config = settings.GetNode("COMPRESSOR");
+
+                List<String> configfiles = new List<string>();
+                
+                if (System.IO.Directory.Exists(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs"))
+                {
+                    configfiles.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs", "*.cfg", System.IO.SearchOption.AllDirectories));
+                }
+
                 overrides = settings.GetNode("OVERRIDES");
                 overridesFolders = settings.GetNode("OVERRIDES_FOLDERS");
                 ConfigNode folders = settings.GetNode("FOLDERS");
                 ConfigNode readable = settings.GetNode("LEAVE_READABLE");
                 ConfigNode normals = settings.GetNode("NORMAL_LIST");
+
+                if(overrides == null)
+                {
+                    overrides = new ConfigNode("OVERRIDES");
+                }
+                if(overridesFolders == null)
+                {
+                    overridesFolders = new ConfigNode("OVERRIDES_FOLDERS");
+                }
+                if(folders == null)
+                {
+                    folders = new ConfigNode("FOLDERS");
+                }
+                if (readable == null)
+                {
+                    readable = new ConfigNode("LEAVE_READABLE");
+                }
+                if (normals == null)
+                {
+                    normals = new ConfigNode("NORMAL_LIST");
+                }
+                String pathStart = (KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs/").Replace('\\', '/');
+                foreach(String configFile in configfiles)
+                {
+                    String unixConfigFile = configFile.Replace('\\', '/');
+                    String folder = unixConfigFile.Replace(pathStart, "").Replace(".cfg","");
+                    ConfigNode configFolder = ConfigNode.Load(unixConfigFile);
+                    folders.AddValue("folder", folder);
+                    ConfigNode modOverrides = configFolder.GetNode("OVERRIDES");
+                    ConfigNode modOverridesFolders = configFolder.GetNode("OVERRIDES_FOLDERS");
+                    ConfigNode modReadable = configFolder.GetNode("LEAVE_READABLE");
+                    ConfigNode modNormals = configFolder.GetNode("NORMAL_LIST");
+                    CopyConfigNode(modOverrides, overrides);
+                    CopyConfigNode(modOverridesFolders, overridesFolders);
+                    CopyConfigNode(modReadable, readable);
+                    CopyConfigNode(modNormals, normals);
+                }
 
                 foreach (ConfigNode node in overridesFolders.nodes)
                 {
@@ -541,6 +605,21 @@ namespace TextureCompressor
                 bool.TryParse(compressString_normals, out config_compress_normals);
                 int.TryParse(scaleString_normals, out config_scale_normals);
                 int.TryParse(max_sizeString_normals, out config_max_size_normals);
+            }
+        }
+
+        private void CopyConfigNode(ConfigNode original, ConfigNode copy)
+        {
+            if (original != null)
+            {
+                foreach (ConfigNode node in original.nodes)
+                {
+                    copy.AddNode(node);
+                }
+                foreach (ConfigNode.Value value in original.values)
+                {
+                    copy.AddValue(value.name, value.value);
+                }
             }
         }
 
@@ -660,6 +739,12 @@ namespace TextureCompressor
                 Texture.isReadable = false;
             }
 
+            updateMemoryCount(originalWidth, originalHeight, originalFormat, hasMipmaps, width, height, tex.format, mipmaps);
+            
+        }
+
+        private void updateMemoryCount(int originalWidth, int originalHeight, TextureFormat originalFormat, bool originalMipmaps, int width, int height, TextureFormat format, bool mipmaps)
+        {
             int oldSize = 0;
             int newSize = 0;
             switch (originalFormat)
@@ -676,7 +761,7 @@ namespace TextureCompressor
                     oldSize = originalWidth * originalHeight;
                     break;
             }
-            switch (tex.format)
+            switch (format)
             {
                 case TextureFormat.ARGB32:
                 case TextureFormat.RGBA32:
@@ -696,11 +781,11 @@ namespace TextureCompressor
                     newSize = width * height;
                     break;
             }
-            if(hasMipmaps)
+            if (originalMipmaps)
             {
                 oldSize += (int)(oldSize * .33f);
             }
-            if(mipmaps)
+            if (mipmaps)
             {
                 newSize += (int)(newSize * .33f);
             }
@@ -709,7 +794,6 @@ namespace TextureCompressor
             {
                 memorySaved += saved;
             }
-
         }
 
         public static void Log(String message)
