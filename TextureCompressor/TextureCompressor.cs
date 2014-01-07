@@ -472,11 +472,12 @@ namespace TextureCompressor
                         String pngPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".png";
                         String jpgPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".jpg";
                         String tgaPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".tga";
-
-                        Texture.isNormalMap = Texture.name.EndsWith("_NRM") || normalList.Contains(Texture.name);
                         
                         if (Texture.name.Length > 0 && foldersList.Exists(n => Texture.name.StartsWith(n)))
                         {
+                            
+                            Texture.isNormalMap = Texture.name.EndsWith("_NRM") || normalList.Contains(Texture.name);
+                            
                             try { Texture.texture.GetPixel(0, 0); }
                             catch
                             {
@@ -569,6 +570,7 @@ namespace TextureCompressor
                     TextureFormat format = tex.format;
                     bool mipmaps = tex.mipmapCount == 1 ? false : true;
                     tex.Compress(true);
+                    Texture.isCompressed = true;
                     updateMemoryCount(originalWidth, originalHeight, format, mipmaps, originalWidth, originalHeight, tex.format, mipmaps);
                 }
                 catch { }
@@ -797,6 +799,7 @@ namespace TextureCompressor
             if (compress && width > 1 && height > 1)
             {
                 tex.Compress(true);
+                Texture.isCompressed = true;
             }
             if (!makeNotReadable || Texture.isNormalMap || readableList.Contains(Texture.name))
             {
