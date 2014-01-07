@@ -372,8 +372,6 @@ namespace TextureCompressor
             int width = imageBuffer[12] | (imageBuffer[13] << 8);
             int height = imageBuffer[14] | (imageBuffer[15] << 8);
             int depth = imageBuffer[16];
-            Log("width: " + width);
-            Log("height: " + height);
             bool alpha = depth == 32 ? true : false;
             TextureFormat texFormat = depth == 32 ? TextureFormat.RGBA32 : TextureFormat.RGB24;
 
@@ -383,7 +381,6 @@ namespace TextureCompressor
             int n = 18;
             if (imgType == 2)
             {
-                Log("type2");
                 for (int i = 0; i < width * height; i++)
                 {
                     colors[i].b = imageBuffer[n++];
@@ -401,7 +398,6 @@ namespace TextureCompressor
             }
             else if(imgType == 10)
             {
-                Log("type10");
                 int i = 0;
                 int run = 0;
                 while (i < width * height)
