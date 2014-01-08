@@ -51,6 +51,7 @@ namespace TextureCompressor
                     Log("Format: " + texture.format.ToString());
                     Log("MipMaps: " + texture.mipmapCount.ToString());
                     Log("Size: " + texture.width.ToString() + "x" + texture.height);
+                    Log("Readable: " + Texture.isReadable);
                     if (texture.name.Length > 0 && foldersList.Exists(n => texture.name.StartsWith(n)))
                     {
                         if(!Texture.isReadable)
@@ -87,6 +88,7 @@ namespace TextureCompressor
                         if (!readableList.Contains(texture.name))
                         {
                             texture.Apply(mipmaps, makeNotReadable);
+                            Log("_Readable: " + !makeNotReadable);
                         }
                     }
                 }
@@ -571,9 +573,12 @@ namespace TextureCompressor
                     bool mipmaps = tex.mipmapCount == 1 ? false : true;
                     tex.Compress(true);
                     Texture.isCompressed = true;
+                    Texture.isReadable = true;
                     updateMemoryCount(originalWidth, originalHeight, format, mipmaps, originalWidth, originalHeight, tex.format, mipmaps);
                 }
-                catch { }
+                catch {
+                    Texture.isReadable = false;
+                }
             }
         }
 
