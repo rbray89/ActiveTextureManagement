@@ -528,6 +528,7 @@ namespace TextureCompressor
                             else if (folder != null)
                             {
                                 ConfigNode overrideFolder = overridesFolders.GetNode(folder);
+                                ApplyNodeSettings(Texture, overrideFolder, true);
                             }
                             else
                             {
@@ -700,17 +701,20 @@ namespace TextureCompressor
             }
         }
 
-        private void ApplyNodeSettings(GameDatabase.TextureInfo Texture, ConfigNode overrideNode)
+        private void ApplyNodeSettings(GameDatabase.TextureInfo Texture, ConfigNode overrideNode, bool folder = false)
         {
-            String mipmapsString = overrideNode.GetValue("mipmaps");
-            String compressString = overrideNode.GetValue("compress");
-            String scaleString = overrideNode.GetValue("scale");
+            String normalString = Texture.isNormalMap && folder? "_normals" : "";
+            String mipmapsString = overrideNode.GetValue("mipmaps" + normalString);
+            String compressString = overrideNode.GetValue("compress" + normalString);
+            String scaleString = overrideNode.GetValue("scale" + normalString);
+            String max_sizeString = overrideNode.GetValue("max_size" + normalString);
             String filter_modeString = overrideNode.GetValue("filter_mode");
             String make_not_readableString = overrideNode.GetValue("make_not_readable");
 
             bool local_mipmaps = false;
             bool local_compress = true;
             int local_scale = 1;
+            int local_max_size = 0;
             FilterMode filter_mode = FilterMode.Bilinear;
             bool local_not_readable = false;
 
@@ -719,11 +723,14 @@ namespace TextureCompressor
             int.TryParse(scaleString, out local_scale);
             filter_mode = (FilterMode)Enum.Parse(typeof(FilterMode), filter_modeString);
             bool.TryParse(make_not_readableString, out local_not_readable);
-
+            if(folder)
+            {
+                int.TryParse(max_sizeString, out local_max_size);
+            }
             Texture2D tex = Texture.texture;
             TextureFormat format = tex.format;
 
-            UpdateTex(Texture, local_compress, local_mipmaps, local_scale, filter_mode, local_not_readable);
+            UpdateTex(Texture, local_compress, local_mipmaps, local_scale, filter_mode, local_not_readable, local_max_size);
 
         }
 
