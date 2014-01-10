@@ -817,12 +817,12 @@ namespace TextureCompressor
                     }
                 }
                 int tmpScale = scale;
-                while (width < 2 && tmpScale > 0)
+                while (width < 1 && tmpScale > 0)
                 {
                     width = tex.width / --tmpScale;
                 }
                 tmpScale = scale;
-                while (height < 2 && tmpScale > 0)
+                while (height < 1 && tmpScale > 0)
                 {
                     height = tex.height / --tmpScale;
                 }
