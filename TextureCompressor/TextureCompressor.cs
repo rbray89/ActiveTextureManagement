@@ -711,18 +711,40 @@ namespace TextureCompressor
             String filter_modeString = overrideNode.GetValue("filter_mode");
             String make_not_readableString = overrideNode.GetValue("make_not_readable");
 
-            bool local_mipmaps = false;
-            bool local_compress = true;
-            int local_scale = 1;
-            int local_max_size = 0;
-            FilterMode filter_mode = FilterMode.Bilinear;
-            bool local_not_readable = false;
+            bool local_mipmaps = Texture.isNormalMap ? config_mipmaps_normals : config_mipmaps;
+            bool local_compress = Texture.isNormalMap ? config_compress_normals : config_compress;
+            int local_scale = Texture.isNormalMap ? config_scale_normals : config_scale;
+            int local_max_size = Texture.isNormalMap ? config_max_size_normals : config_max_size;
+            FilterMode filter_mode = config_filter_mode;
+            bool local_not_readable = config_make_not_readable;
 
-            bool.TryParse(mipmapsString, out local_mipmaps);
-            bool.TryParse(compressString, out local_compress);
-            int.TryParse(scaleString, out local_scale);
-            filter_mode = (FilterMode)Enum.Parse(typeof(FilterMode), filter_modeString);
-            bool.TryParse(make_not_readableString, out local_not_readable);
+            if (mipmapsString != null)
+            {
+                bool.TryParse(mipmapsString, out local_mipmaps);
+            }
+            if (compressString != null)
+            {
+                bool.TryParse(compressString, out local_compress);
+            }
+            if (scaleString != null)
+            {
+                int.TryParse(scaleString, out local_scale);
+            }
+            if (filter_modeString != null)
+            {
+                try
+                {
+                    filter_mode = (FilterMode)Enum.Parse(typeof(FilterMode), filter_modeString);
+                }
+                catch
+                {
+                    filter_mode = config_filter_mode;
+                }
+            }
+            if (make_not_readableString != null)
+            {
+                bool.TryParse(make_not_readableString, out local_not_readable);
+            }
             if(folder)
             {
                 int.TryParse(max_sizeString, out local_max_size);
