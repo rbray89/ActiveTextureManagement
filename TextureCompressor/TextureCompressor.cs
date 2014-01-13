@@ -13,8 +13,10 @@ namespace TextureCompressor
         static bool Compressed = false;
         static bool Converted = false;
         static int LastTextureIndex = -1;
-        static int memorySaved = 0;
+        static int gcCount = 0;
+        static long memorySaved = 0;
         const int MAX_IMAGE_SIZE = 4048*4048*4;
+        const int GC_COUNT_TRIGGER = 10;
         static byte[] imageBuffer = new byte[MAX_IMAGE_SIZE];
         static ConfigNode config;
         static ConfigNode overrides;
@@ -474,6 +476,10 @@ namespace TextureCompressor
                         String pngPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".png";
                         String jpgPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".jpg";
                         String tgaPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".tga";
+                        int originalWidth = Texture.texture.width;
+                        int originalHeight = Texture.texture.height;
+                        TextureFormat originalFormat = Texture.texture.format;
+                        bool originalMipmaps = Texture.texture.mipmapCount == 1 ? false : true;
                         
                         if (Texture.name.Length > 0 && foldersList.Exists(n => Texture.name.StartsWith(n)))
                         {
@@ -556,6 +562,18 @@ namespace TextureCompressor
                         {
                             tryCompress(Texture);
                         }
+                        int width = Texture.texture.width;
+                        int height = Texture.texture.height;
+                        TextureFormat format = Texture.texture.format;
+                        bool mipmaps = Texture.texture.mipmapCount == 1 ? false : true;
+                        Log("Texture: " + Texture.name);
+                        updateMemoryCount(Texture.texture, originalWidth, originalHeight, originalFormat, originalMipmaps, width, height, format, mipmaps);
+                        gcCount++;
+                    }
+                    if (gcCount > GC_COUNT_TRIGGER)
+                    {
+                        System.GC.Collect();
+                        gcCount = 0;
                     }
                 }
             }
@@ -575,7 +593,6 @@ namespace TextureCompressor
                     tex.Compress(true);
                     Texture.isCompressed = true;
                     Texture.isReadable = true;
-                    updateMemoryCount(originalWidth, originalHeight, format, mipmaps, originalWidth, originalHeight, tex.format, mipmaps);
                 }
                 catch {
                     Texture.isReadable = false;
@@ -660,7 +677,6 @@ namespace TextureCompressor
 
                 String mipmapsString = config.GetValue("mipmaps");
                 String compressString = config.GetValue("compress");
-                String discard_alphaString = config.GetValue("discard_alpha");
                 String scaleString = config.GetValue("scale");
                 String max_sizeString = config.GetValue("max_size");
                 String filter_modeString = config.GetValue("filter_mode");
@@ -675,7 +691,6 @@ namespace TextureCompressor
 
                 String mipmapsString_normals = config.GetValue("mipmaps_normals");
                 String compressString_normals = config.GetValue("compress_normals");
-                String discard_alphaString_normals = config.GetValue("discard_alpha_normals");
                 String scaleString_normals = config.GetValue("scale_normals");
                 String max_sizeString_normals = config.GetValue("max_size_normals");
 
@@ -683,6 +698,18 @@ namespace TextureCompressor
                 bool.TryParse(compressString_normals, out config_compress_normals);
                 int.TryParse(scaleString_normals, out config_scale_normals);
                 int.TryParse(max_sizeString_normals, out config_max_size_normals);
+
+                Log("Settings:");
+                Log("   mipmaps: " + config_mipmaps);
+                Log("   compress: " + config_compress);
+                Log("   scale: " + config_scale);
+                Log("   max_size: " + config_max_size);
+                Log("   mipmaps_normals: " + config_mipmaps_normals);
+                Log("   compress_normals: " + config_compress_normals);
+                Log("   scale_normals: " + config_scale_normals);
+                Log("   max_size_normals: " + config_max_size_normals);
+                Log("   filter_mode: " + config_filter_mode);
+                Log("   make_not_readable: " + config_make_not_readable);
             }
         }
 
@@ -791,46 +818,49 @@ namespace TextureCompressor
             }
             int originalWidth = tex.width;
             int originalHeight = tex.height;
-            int width = tex.width;
-            int height = tex.height;
+            int width = tex.width / scale;
+            int height = tex.height / scale;
             bool hasMipmaps = tex.mipmapCount == 1 ? false : true;
-            if ((mipmaps != hasMipmaps) && scale == 1 && (max_size == 0 || (width <= max_size && height <= max_size)))
+            
+            int tmpScale = scale-1;
+            while (width < 1 && tmpScale > 0)
+            {
+                width = tex.width / tmpScale--;
+            }
+            tmpScale = scale-1;
+            while (height < 1 && tmpScale > 0)
+            {
+                height = tex.height / tmpScale--;
+            }
+            
+            if (max_size != 0)
+            {
+                if (width > max_size)
+                {
+                    width = max_size;
+                }
+                if (height > max_size)
+                {
+                    height = max_size;
+                }
+            }
+            bool resize = tex.width != width || tex.height != height;
+            
+            if ((mipmaps != hasMipmaps) && !resize)
             {
                 Color32[] pixels = tex.GetPixels32();
                 tex.Resize(width, height, format, mipmaps);
                 tex.SetPixels32(pixels);
                 tex.Apply(mipmaps);
             }
-            else if (scale != 1 || (max_size != 0 && (width > max_size && height > max_size)))
+            else if (resize)
             {
-                width = tex.width / scale;
-                height = tex.height / scale;
-                if (max_size != 0)
-                {
-                    if(width > max_size)
-                    {
-                        width = max_size;
-                    }
-                    if(height > max_size)
-                    {
-                        height = max_size;
-                    }
-                }
-                int tmpScale = scale;
-                while (width < 1 && tmpScale > 0)
-                {
-                    width = tex.width / --tmpScale;
-                }
-                tmpScale = scale;
-                while (height < 1 && tmpScale > 0)
-                {
-                    height = tex.height / --tmpScale;
-                }
                 TextureResizer.Resize(tex, width, height, format, mipmaps);
             }
+            
 
             tex.filterMode = filterMode;
-            if (compress && width > 1 && height > 1)
+            if (compress)
             {
                 tex.Compress(true);
                 Texture.isCompressed = true;
@@ -846,12 +876,21 @@ namespace TextureCompressor
                 Texture.isReadable = false;
             }
 
-            updateMemoryCount(originalWidth, originalHeight, originalFormat, hasMipmaps, width, height, tex.format, mipmaps);
-            
         }
 
-        private void updateMemoryCount(int originalWidth, int originalHeight, TextureFormat originalFormat, bool originalMipmaps, int width, int height, TextureFormat format, bool mipmaps)
+        private void updateMemoryCount(Texture2D tex, int originalWidth, int originalHeight, TextureFormat originalFormat, bool originalMipmaps, int width, int height, TextureFormat format, bool mipmaps)
         {
+            Log("originalWidth: " + originalWidth);
+            Log("originalHeight: " + originalHeight);
+            Log("originalFormat: " + originalFormat);
+            Log("originalMipmaps: " + originalMipmaps);
+            Log("width: " + width);
+            Log("height: " + height);
+            Log("format: " + format);
+            Log("mipmaps: " + mipmaps);
+            bool readable = true;
+            try{tex.GetPixel(0,0);}catch{readable = false;};
+            Log("readable: " + readable);
             int oldSize = 0;
             int newSize = 0;
             switch (originalFormat)
@@ -865,6 +904,12 @@ namespace TextureCompressor
                     oldSize = 3 * (originalWidth * originalHeight);
                     break;
                 case TextureFormat.Alpha8:
+                    oldSize = originalWidth * originalHeight;
+                    break;
+                case TextureFormat.DXT1:
+                    oldSize = (originalWidth * originalHeight) / 2;
+                    break;
+                case TextureFormat.DXT5:
                     oldSize = originalWidth * originalHeight;
                     break;
             }
@@ -901,6 +946,8 @@ namespace TextureCompressor
             {
                 memorySaved += saved;
             }
+            Log("Saved " + saved + "B");
+            Log("Accumulated Saved " + memorySaved + "B");
         }
 
         public static void Log(String message)
