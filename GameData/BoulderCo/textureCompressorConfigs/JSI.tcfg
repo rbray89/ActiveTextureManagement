@@ -1,11 +1,12 @@
-enabled = true
+config_enabled = true
 OVERRIDES
 {
-	000_Toolbar/.*
+	JSI/RasterPropMonitor/.*
 	{
 		compress = true
 		mipmaps = false
 		scale = 1
 		max_size = 0
+		make_not_readable = false
 	}
 }

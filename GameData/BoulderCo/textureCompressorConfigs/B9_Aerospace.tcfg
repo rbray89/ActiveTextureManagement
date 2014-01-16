@@ -1,4 +1,4 @@
-enabled = true
+config_enabled = true
 NORMAL_LIST
 {
 	texture = B9_Aerospace/Parts/Structure_P_Clear-Half/model001

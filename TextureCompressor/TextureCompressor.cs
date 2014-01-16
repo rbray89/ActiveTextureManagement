@@ -588,7 +588,7 @@ namespace TextureCompressor
         {
             if (config == null)
             {
-                String configString = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs/textureCompressor.cfg";
+                String configString = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs/textureCompressor.tcfg";
                 ConfigNode settings = ConfigNode.Load(configString);
                 config = settings.GetNode("COMPRESSOR");
 
@@ -596,7 +596,7 @@ namespace TextureCompressor
                 
                 if (System.IO.Directory.Exists(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs"))
                 {
-                    configfiles.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs", "*.cfg", System.IO.SearchOption.AllDirectories));
+                    configfiles.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs", "*.tcfg", System.IO.SearchOption.AllDirectories));
                 }
 
                 overrides = settings.GetNode("OVERRIDES");
@@ -620,9 +620,9 @@ namespace TextureCompressor
                 {
                     
                     String unixConfigFile = configFile.Replace('\\', '/');
-                    String folder = unixConfigFile.Replace(pathStart, "").Replace(".cfg","");
+                    String folder = unixConfigFile.Replace(pathStart, "").Replace(".tcfg","");
                     ConfigNode configFolder = ConfigNode.Load(unixConfigFile);
-                    String enabledString = configFolder.GetValue("enabled");
+                    String enabledString = configFolder.GetValue("config_enabled");
                     bool isEnabled = false;
                     if ( enabledString != null)
                     {

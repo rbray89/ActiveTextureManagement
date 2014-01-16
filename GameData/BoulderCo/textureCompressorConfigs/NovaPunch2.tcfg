@@ -1,4 +1,4 @@
-enabled = true
+config_enabled = true
 NORMAL_LIST
 {
 	texture = NovaPunch2/Parts/CouplersAndAdapters/NP_interstage_1_25m_2_5m_tank/model001

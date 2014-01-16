@@ -1,7 +1,7 @@
-enabled = true
+config_enabled = true
 OVERRIDES
 {
-	TriggerTech/.*
+	000_Toolbar/.*
 	{
 		compress = true
 		mipmaps = false

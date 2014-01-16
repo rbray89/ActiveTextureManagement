@@ -1,4 +1,4 @@
-enabled = true
+config_enabled = true
 NORMAL_LIST
 {
 	texture = BoulderCo/Clouds/Textures/bump1

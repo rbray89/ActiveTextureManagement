@@ -1,4 +1,4 @@
-enabled = true
+config_enabled = true
 NORMAL_LIST
 {
 	texture = ISS_Comunity/Parts/ISS_CBM_dockport/model001

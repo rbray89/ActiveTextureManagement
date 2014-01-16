@@ -1,4 +1,4 @@
-enabled = true
+config_enabled = true
 NORMAL_LIST
 {
 	texture = Squad/Spaces/mk1CockpitInternal/model002
