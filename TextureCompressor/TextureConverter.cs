@@ -7,25 +7,40 @@ using UnityEngine;
 
 namespace TextureCompressor
 {
-    class TextureResizer
+    class TextureConverter
     {
-        public static void Resize(Texture2D texture, int width, int height, TextureFormat format, bool mipmaps)
+        public static void Resize(GameDatabase.TextureInfo texture, int width, int height, TextureFormat format, bool mipmaps)
         {
-            Color32[] pixels = texture.GetPixels32();
-            int origWidth = texture.width;
-            int origHeight = texture.height;
+            Texture2D tex = texture.texture;
+            Color32[] pixels = tex.GetPixels32();
+            if(texture.isNormalMap)
+            {
+                ConvertToUnityNormalMap(pixels);
+            }
+            int origWidth = tex.width;
+            int origHeight = tex.height;
             Color32[] newPixels = new Color32[width * height];
             int index = 0;
             for (int h = 0; h < height; h++)
             {
                 for (int w = 0; w < width; w++)
                 {
-                    newPixels[index++] = GetPixel(pixels, texture, ((float)w) / width, ((float)h) / height, width, height);
+                    newPixels[index++] = GetPixel(pixels, tex, ((float)w) / width, ((float)h) / height, width, height);
                 }
             }
-            texture.Resize(width, height, format, mipmaps);
-            texture.SetPixels32(newPixels);
-            texture.Apply(mipmaps);
+            tex.Resize(width, height, format, mipmaps);
+            tex.SetPixels32(newPixels);
+            tex.Apply(mipmaps);
+        }
+
+        public static void ConvertToUnityNormalMap(Color32[] colors)
+        {
+            for(int i = 0; i < colors.Length; i++)
+            {
+                colors[i].a = colors[i].r;
+                colors[i].r = colors[i].g;
+                colors[i].b = colors[i].g;
+            }
         }
 
         private static Color32 GetPixel(Color32[] pixels, Texture2D tex, float w, float h, float width, float height)

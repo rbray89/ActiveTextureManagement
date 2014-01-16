@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace TextureCompressor
@@ -16,12 +17,11 @@ namespace TextureCompressor
         static int gcCount = 0;
         static long memorySaved = 0;
         const int MAX_IMAGE_SIZE = 4048*4048*4;
-        const int GC_COUNT_TRIGGER = 10;
+        const int GC_COUNT_TRIGGER = 20;
         static byte[] imageBuffer = new byte[MAX_IMAGE_SIZE];
         static ConfigNode config;
         static ConfigNode overrides;
-        static ConfigNode overridesFolders;
-        static List<String> overridesFolderList = new List<string>();
+        static List<String> overridesList = new List<string>();
         static List<String> foldersList = new List<string>();
         static List<String> readableList = new List<string>();
         static List<String> normalList = new List<string>();
@@ -63,18 +63,10 @@ namespace TextureCompressor
                         bool mipmaps = false;
                         bool makeNotReadable = false;
                         ConfigNode overrideNode = overrides.GetNode(Texture.name);
-                        string folder = overridesFolderList.Find(n => Texture.name.StartsWith(n));
                         if (overrideNode != null)
                         {
                             String mipmapsString = overrideNode.GetValue("mipmaps");
                             String make_not_readableString = overrideNode.GetValue("make_not_readable");
-                            bool.TryParse(mipmapsString, out mipmaps);
-                            bool.TryParse(make_not_readableString, out makeNotReadable);
-                        }
-                        else if (folder != null)
-                        {
-                            String mipmapsString = overridesFolders.GetValue("mipmaps");
-                            String make_not_readableString = overridesFolders.GetValue("make_not_readable");
                             bool.TryParse(mipmapsString, out mipmaps);
                             bool.TryParse(make_not_readableString, out makeNotReadable);
                         }
@@ -480,7 +472,8 @@ namespace TextureCompressor
                         int originalHeight = Texture.texture.height;
                         TextureFormat originalFormat = Texture.texture.format;
                         bool originalMipmaps = Texture.texture.mipmapCount == 1 ? false : true;
-                        
+                        Log("Looking at Texture: " + Texture.name);
+                        Log("Looking at Texture: " + Texture.texture.name);
                         if (Texture.name.Length > 0 && foldersList.Exists(n => Texture.name.StartsWith(n)))
                         {
                             
@@ -525,22 +518,18 @@ namespace TextureCompressor
                                     tex.name = name;
                                 }
                             }
-                            ConfigNode overrideNode = overrides.GetNode(Texture.name);
-                            string folder = overridesFolderList.Find(n => Texture.name.StartsWith(n));
-                            if (overrideNode != null)
+                            ;
+                            string overrideName = overridesList.Find(n => Texture.name.Length == Regex.Match(Texture.name, n).Length);
+                            if (overrideName != null)
                             {
+                                ConfigNode overrideNode = overrides.GetNode(overrideName);
                                 ApplyNodeSettings(Texture, overrideNode);
-                            }
-                            else if (folder != null)
-                            {
-                                ConfigNode overrideFolder = overridesFolders.GetNode(folder);
-                                ApplyNodeSettings(Texture, overrideFolder, true);
                             }
                             else
                             {
                                 ApplySettings(Texture);
                             }
-
+                            /*
                             if(Texture.isNormalMap)
                             {
                                 if (Texture.texture.name.Length > 0)
@@ -552,22 +541,21 @@ namespace TextureCompressor
                                     name = Texture.name;
                                 }
                                 Texture2D orig = Texture.texture;
+                                bool mipmaps = orig.mipmapCount == 1 ? false : true;
+                                Log("mipmaps " + mipmaps);
                                 Texture = GameDatabase.Instance.databaseTexture[i] = new GameDatabase.TextureInfo(GameDatabase.BitmapToUnityNormalMap(orig), true, false, false);
                                 Texture2D.DestroyImmediate(orig);
+                                mipmaps = Texture.texture.mipmapCount == 1 ? false : true;
+                                Log("mipmaps " + mipmaps);
                                 Texture.name = name;
                                 Texture.texture.name = name;
-                            }
+                            }*/
                         }
                         else if(config_compress)
                         {
                             tryCompress(Texture);
                         }
-                        int width = Texture.texture.width;
-                        int height = Texture.texture.height;
-                        TextureFormat format = Texture.texture.format;
-                        bool mipmaps = Texture.texture.mipmapCount == 1 ? false : true;
-                        Log("Texture: " + Texture.name);
-                        updateMemoryCount(Texture.texture, originalWidth, originalHeight, originalFormat, originalMipmaps, width, height, format, mipmaps);
+                        updateMemoryCount(originalWidth, originalHeight, originalFormat, originalMipmaps, Texture);
                         gcCount++;
                     }
                     if (gcCount > GC_COUNT_TRIGGER)
@@ -586,10 +574,6 @@ namespace TextureCompressor
             {
                 try { 
                     tex.GetPixel(0, 0);
-                    int originalWidth = tex.width;
-                    int originalHeight = tex.height;
-                    TextureFormat format = tex.format;
-                    bool mipmaps = tex.mipmapCount == 1 ? false : true;
                     tex.Compress(true);
                     Texture.isCompressed = true;
                     Texture.isReadable = true;
@@ -616,26 +600,16 @@ namespace TextureCompressor
                 }
 
                 overrides = settings.GetNode("OVERRIDES");
-                overridesFolders = settings.GetNode("OVERRIDES_FOLDERS");
                 ConfigNode folders = settings.GetNode("FOLDERS");
-                ConfigNode readable = settings.GetNode("LEAVE_READABLE");
                 ConfigNode normals = settings.GetNode("NORMAL_LIST");
 
                 if(overrides == null)
                 {
                     overrides = new ConfigNode("OVERRIDES");
                 }
-                if(overridesFolders == null)
-                {
-                    overridesFolders = new ConfigNode("OVERRIDES_FOLDERS");
-                }
                 if(folders == null)
                 {
                     folders = new ConfigNode("FOLDERS");
-                }
-                if (readable == null)
-                {
-                    readable = new ConfigNode("LEAVE_READABLE");
                 }
                 if (normals == null)
                 {
@@ -644,31 +618,33 @@ namespace TextureCompressor
                 String pathStart = (KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs/").Replace('\\', '/');
                 foreach(String configFile in configfiles)
                 {
+                    
                     String unixConfigFile = configFile.Replace('\\', '/');
                     String folder = unixConfigFile.Replace(pathStart, "").Replace(".cfg","");
                     ConfigNode configFolder = ConfigNode.Load(unixConfigFile);
-                    folders.AddValue("folder", folder);
-                    ConfigNode modOverrides = configFolder.GetNode("OVERRIDES");
-                    ConfigNode modOverridesFolders = configFolder.GetNode("OVERRIDES_FOLDERS");
-                    ConfigNode modReadable = configFolder.GetNode("LEAVE_READABLE");
-                    ConfigNode modNormals = configFolder.GetNode("NORMAL_LIST");
-                    CopyConfigNode(modOverrides, overrides);
-                    CopyConfigNode(modOverridesFolders, overridesFolders);
-                    CopyConfigNode(modReadable, readable);
-                    CopyConfigNode(modNormals, normals);
+                    String enabledString = configFolder.GetValue("enabled");
+                    bool isEnabled = false;
+                    if ( enabledString != null)
+                    {
+                        bool.TryParse(enabledString, out isEnabled);
+                    }
+                    if (isEnabled)
+                    {
+                        folders.AddValue("folder", folder);
+                        ConfigNode modOverrides = configFolder.GetNode("OVERRIDES");
+                        ConfigNode modNormals = configFolder.GetNode("NORMAL_LIST");
+                        CopyConfigNode(modOverrides, overrides);
+                        CopyConfigNode(modNormals, normals);
+                    }
                 }
 
-                foreach (ConfigNode node in overridesFolders.nodes)
+                foreach (ConfigNode node in overrides.nodes)
                 {
-                    overridesFolderList.Add(node.name);
+                    overridesList.Add(node.name);
                 }
                 foreach (ConfigNode.Value folder in folders.values)
                 {
                     foldersList.Add(folder.value);
-                }
-                foreach (ConfigNode.Value texture in readable.values)
-                {
-                    readableList.Add(texture.value);
                 }
                 foreach (ConfigNode.Value texture in normals.values)
                 {
@@ -728,9 +704,9 @@ namespace TextureCompressor
             }
         }
 
-        private void ApplyNodeSettings(GameDatabase.TextureInfo Texture, ConfigNode overrideNode, bool folder = false)
+        private void ApplyNodeSettings(GameDatabase.TextureInfo Texture, ConfigNode overrideNode)
         {
-            String normalString = Texture.isNormalMap && folder? "_normals" : "";
+            String normalString = Texture.isNormalMap ? "_normals" : "";
             String mipmapsString = overrideNode.GetValue("mipmaps" + normalString);
             String compressString = overrideNode.GetValue("compress" + normalString);
             String scaleString = overrideNode.GetValue("scale" + normalString);
@@ -772,7 +748,7 @@ namespace TextureCompressor
             {
                 bool.TryParse(make_not_readableString, out local_not_readable);
             }
-            if(folder)
+            if (local_max_size != null)
             {
                 int.TryParse(max_sizeString, out local_max_size);
             }
@@ -849,13 +825,17 @@ namespace TextureCompressor
             if ((mipmaps != hasMipmaps) && !resize)
             {
                 Color32[] pixels = tex.GetPixels32();
+                if (Texture.isNormalMap)
+                {
+                    TextureConverter.ConvertToUnityNormalMap(pixels);
+                }
                 tex.Resize(width, height, format, mipmaps);
                 tex.SetPixels32(pixels);
                 tex.Apply(mipmaps);
             }
             else if (resize)
             {
-                TextureResizer.Resize(tex, width, height, format, mipmaps);
+                TextureConverter.Resize(Texture, width, height, format, mipmaps);
             }
             
 
@@ -865,7 +845,7 @@ namespace TextureCompressor
                 tex.Compress(true);
                 Texture.isCompressed = true;
             }
-            if (!makeNotReadable || Texture.isNormalMap || readableList.Contains(Texture.name))
+            if (!makeNotReadable || readableList.Contains(Texture.name))
             {
                 tex.Apply(mipmaps);
                 Texture.isReadable = true;
@@ -878,8 +858,15 @@ namespace TextureCompressor
 
         }
 
-        private void updateMemoryCount(Texture2D tex, int originalWidth, int originalHeight, TextureFormat originalFormat, bool originalMipmaps, int width, int height, TextureFormat format, bool mipmaps)
+        private void updateMemoryCount(int originalWidth, int originalHeight, TextureFormat originalFormat, bool originalMipmaps, GameDatabase.TextureInfo Texture)
         {
+            int width = Texture.texture.width;
+            int height = Texture.texture.height;
+            TextureFormat format = Texture.texture.format;
+            bool mipmaps = Texture.texture.mipmapCount == 1 ? false : true;
+            Log("Texture: " + Texture.name);
+            Log("is normalmap: " + Texture.isNormalMap);
+            Texture2D tex = Texture.texture;
             Log("originalWidth: " + originalWidth);
             Log("originalHeight: " + originalHeight);
             Log("originalFormat: " + originalFormat);
@@ -891,6 +878,8 @@ namespace TextureCompressor
             bool readable = true;
             try{tex.GetPixel(0,0);}catch{readable = false;};
             Log("readable: " + readable);
+            if(readable != Texture.isReadable)
+            { Log("Readbility does not match!"); }
             int oldSize = 0;
             int newSize = 0;
             switch (originalFormat)
