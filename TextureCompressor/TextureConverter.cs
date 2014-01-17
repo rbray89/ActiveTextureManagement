@@ -9,16 +9,53 @@ namespace TextureCompressor
 {
     class TextureConverter
     {
-        public static void Resize(GameDatabase.TextureInfo texture, int width, int height, TextureFormat format, bool mipmaps)
+        const int MAX_IMAGE_SIZE = 4048 * 4048 * 4;
+        static byte[] imageBuffer = null;
+
+        public static void InitImageBuffer()
         {
+            if (imageBuffer == null)
+            {
+                imageBuffer = new byte[MAX_IMAGE_SIZE];
+            }
+        }
+
+        public static void DestroyImageBuffer()
+        {
+            imageBuffer = null;
+        }
+
+        public static void Resize(GameDatabase.TextureInfo texture, int width, int height, bool mipmaps, bool isNormalFormat)
+        {
+            TextureCompressor.Log("Resizing...");
             Texture2D tex = texture.texture;
+            TextureFormat format = tex.format;
+            if (texture.isNormalMap)
+            {
+                format = TextureFormat.ARGB32;
+            }
+            else if (format == TextureFormat.DXT1 || format == TextureFormat.RGB24)
+            {
+                format = TextureFormat.RGB24;
+            }
+            else
+            {
+                format = TextureFormat.RGBA32;
+            }
+
             Color32[] pixels = tex.GetPixels32();
-            if(texture.isNormalMap)
+            if (texture.isNormalMap && !isNormalFormat)
             {
                 ConvertToUnityNormalMap(pixels);
             }
-            int origWidth = tex.width;
-            int origHeight = tex.height;
+            Color32[] newPixels = ResizePixels(pixels, tex, width, height);
+            tex.Resize(width, height, format, mipmaps);
+            tex.SetPixels32(newPixels);
+            tex.Apply(mipmaps);
+        }
+
+        private static Color32[] ResizePixels(Color32[] pixels, Texture2D tex, int width, int height)
+        {
             Color32[] newPixels = new Color32[width * height];
             int index = 0;
             for (int h = 0; h < height; h++)
@@ -28,9 +65,7 @@ namespace TextureCompressor
                     newPixels[index++] = GetPixel(pixels, tex, ((float)w) / width, ((float)h) / height, width, height);
                 }
             }
-            tex.Resize(width, height, format, mipmaps);
-            tex.SetPixels32(newPixels);
-            tex.Apply(mipmaps);
+            return newPixels;
         }
 
         public static void ConvertToUnityNormalMap(Color32[] colors)
@@ -145,6 +180,299 @@ namespace TextureCompressor
 
             Color32 color = new Color32(R, G, B, A);
             return color;
+        }
+
+        public static void MBMToTexture(string file, GameDatabase.TextureInfo texture, bool mipmaps, bool isNormalFormat, int newWidth, int newHeight)
+        {
+            TextureConverter.InitImageBuffer();
+            FileStream mbmStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+            mbmStream.Position = 4;
+
+            uint width = 0, height = 0;
+            for (int b = 0; b < 4; b++)
+            {
+                width >>= 8;
+                width |= (uint)(mbmStream.ReadByte() << 24);
+            }
+            for (int b = 0; b < 4; b++)
+            {
+                height >>= 8;
+                height |= (uint)(mbmStream.ReadByte() << 24);
+            }
+            mbmStream.Position = 12;
+            if (mbmStream.ReadByte() == 1)
+            {
+                texture.isNormalMap = true;
+            }
+            bool convertToNormalFormat = texture.isNormalMap == isNormalFormat ? false : true; 
+
+            mbmStream.Position = 16;
+            int format = mbmStream.ReadByte();
+            mbmStream.Position += 3;
+
+            int imageSize = (int)(width * height * 3);
+            TextureFormat texformat = TextureFormat.RGB24;
+            bool alpha = false;
+            if (format == 32)
+            {
+                imageSize += (int)(width * height);
+                texformat = TextureFormat.ARGB32;
+                alpha = true;
+            }
+
+            mbmStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
+            mbmStream.Close();
+
+            Texture2D tex = texture.texture;
+            
+            Color32[] colors = new Color32[width * height];
+            int n = 0;
+            for (int i = 0; i < width * height; i++)
+            {
+                colors[i].r = imageBuffer[n++];
+                colors[i].g = imageBuffer[n++];
+                colors[i].b = imageBuffer[n++];
+                if (alpha)
+                {
+                    colors[i].a = imageBuffer[n++];
+                }
+                else
+                {
+                    colors[i].a = 255;
+                }
+                if(convertToNormalFormat)
+                {
+                    colors[i].a = colors[i].r;
+                    colors[i].r = colors[i].g;
+                    colors[i].b = colors[i].g;
+                }
+            }
+
+            bool resize = tex.width != newWidth || tex.height != newHeight;
+            if (resize)
+            {
+                width = (uint)newWidth;
+                height = (uint)newHeight;
+                colors = TextureConverter.ResizePixels(colors, tex, (int)width, (int)height);
+            }
+            tex.Resize((int)width, (int)height, texformat, mipmaps);
+            tex.SetPixels32(colors);
+            tex.Apply(mipmaps, false);
+        }
+
+        public static void IMGToTexture(string file, GameDatabase.TextureInfo texture, bool mipmaps, bool isNormalFormat, int width, int height)
+        {
+
+            TextureConverter.InitImageBuffer();
+            FileStream imgStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+            imgStream.Position = 0;
+            imgStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
+            imgStream.Close();
+
+            Texture2D tex = texture.texture;
+            tex.LoadImage(imageBuffer);
+            bool convertToNormalFormat = texture.isNormalMap == isNormalFormat ? false : true;
+            bool hasMipmaps = tex.mipmapCount == 1 ? false : true;
+            bool resize = tex.width != width || tex.height != height;
+            if(resize)
+            {
+                TextureConverter.Resize(texture, width, height, mipmaps, isNormalFormat);
+            }
+            else if (convertToNormalFormat || hasMipmaps != mipmaps)
+            {
+                Color32[] pixels = tex.GetPixels32();
+                if (convertToNormalFormat)
+                {
+                    for (int i = 0; i < pixels.Length; i++)
+                    {
+                        pixels[i].a = pixels[i].r;
+                        pixels[i].r = pixels[i].g;
+                        pixels[i].b = pixels[i].g;
+                    }
+                }
+                tex.SetPixels32(pixels);
+                tex.Apply(mipmaps);
+            }
+            
+        }
+
+        public static void TGAToTexture(string file, GameDatabase.TextureInfo texture, bool mipmaps, bool isNormalFormat, int newWidth, int newHeight)
+        {
+            TextureConverter.InitImageBuffer();
+            FileStream tgaStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+            tgaStream.Position = 0;
+            tgaStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
+            tgaStream.Close();
+
+            byte imgType = imageBuffer[2];
+            int width = imageBuffer[12] | (imageBuffer[13] << 8);
+            int height = imageBuffer[14] | (imageBuffer[15] << 8);
+            int depth = imageBuffer[16];
+            bool alpha = depth == 32 ? true : false;
+            TextureFormat texFormat = depth == 32 ? TextureFormat.RGBA32 : TextureFormat.RGB24;
+            bool convertToNormalFormat = texture.isNormalMap == isNormalFormat ? false : true; 
+
+            Texture2D tex = texture.texture;
+
+            Color32[] colors = new Color32[width * height];
+            int n = 18;
+            if (imgType == 2)
+            {
+                for (int i = 0; i < width * height; i++)
+                {
+                    colors[i].b = imageBuffer[n++];
+                    colors[i].g = imageBuffer[n++];
+                    colors[i].r = imageBuffer[n++];
+                    if (alpha)
+                    {
+                        colors[i].a = imageBuffer[n++];
+                    }
+                    else
+                    {
+                        colors[i].a = 255;
+                    }
+                    if (convertToNormalFormat)
+                    {
+                        colors[i].a = colors[i].r;
+                        colors[i].r = colors[i].g;
+                        colors[i].b = colors[i].g;
+                    }
+                }
+            }
+            else if (imgType == 10)
+            {
+                int i = 0;
+                int run = 0;
+                while (i < width * height)
+                {
+                    run = imageBuffer[n++];
+                    if ((run & 0x80) != 0)
+                    {
+                        run = (run ^ 0x80) + 1;
+                        colors[i].b = imageBuffer[n++];
+                        colors[i].g = imageBuffer[n++];
+                        colors[i].r = imageBuffer[n++];
+                        if (alpha)
+                        {
+                            colors[i].a = imageBuffer[n++];
+                        }
+                        else
+                        {
+                            colors[i].a = 255;
+                        }
+                        if (convertToNormalFormat)
+                        {
+                            colors[i].a = colors[i].r;
+                            colors[i].r = colors[i].g;
+                            colors[i].b = colors[i].g;
+                        }
+                        i++;
+                        for (int c = 1; c < run; c++, i++)
+                        {
+                            colors[i] = colors[i - 1];
+                        }
+                    }
+                    else
+                    {
+                        run += 1;
+                        for (int c = 0; c < run; c++, i++)
+                        {
+                            colors[i].b = imageBuffer[n++];
+                            colors[i].g = imageBuffer[n++];
+                            colors[i].r = imageBuffer[n++];
+                            if (alpha)
+                            {
+                                colors[i].a = imageBuffer[n++];
+                            }
+                            else
+                            {
+                                colors[i].a = 255;
+                            }
+                            if (convertToNormalFormat)
+                            {
+                                colors[i].a = colors[i].r;
+                                colors[i].r = colors[i].g;
+                                colors[i].b = colors[i].g;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                TextureCompressor.Log("TGA format is not supported!");
+            }
+
+            bool resize = tex.width != newWidth || tex.height != newHeight;
+            if (resize)
+            {
+                width = newWidth;
+                height = newHeight;
+                colors = TextureConverter.ResizePixels(colors, tex, width, height);
+            }
+            tex.Resize((int)width, (int)height, texFormat, mipmaps);
+            tex.SetPixels32(colors);
+            tex.Apply(mipmaps, false);
+        }
+
+        public static GameDatabase.TextureInfo GetReadable(GameDatabase.TextureInfo Texture, bool mipmaps, bool isNormalFormat, int width, int height)
+        {
+            TextureCompressor.Log("Re-loading texture...");
+            String mbmPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".mbm";
+            String pngPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".png";
+            String jpgPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".jpg";
+            String tgaPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".tga";
+            if (File.Exists(pngPath) || File.Exists(jpgPath) || File.Exists(tgaPath) || File.Exists(mbmPath))
+            {
+
+                Texture2D tex = new Texture2D(2, 2);
+                String name;
+                if (Texture.texture.name.Length > 0)
+                {
+                    name = Texture.texture.name;
+                }
+                else
+                {
+                    name = Texture.name;
+                }
+                
+                GameDatabase.TextureInfo newTexture = new GameDatabase.TextureInfo(tex, Texture.isNormalMap, true, false);
+                if (File.Exists(pngPath))
+                {
+                    IMGToTexture(pngPath, newTexture, mipmaps, isNormalFormat, width, height);
+                    tex.name = pngPath;
+                }
+                else if (File.Exists(jpgPath))
+                {
+                    IMGToTexture(jpgPath, newTexture, mipmaps, isNormalFormat, width, height);
+                    tex.name = jpgPath;
+                }
+                else if (File.Exists(tgaPath))
+                {
+                    TGAToTexture(tgaPath, newTexture, mipmaps, isNormalFormat, width, height);
+                    tex.name = tgaPath;
+                }
+                else if (File.Exists(mbmPath))
+                {
+                    MBMToTexture(mbmPath, newTexture, mipmaps, isNormalFormat, width, height);
+                    tex.name = mbmPath;
+                }
+                Texture2D.DestroyImmediate(Texture.texture);
+                newTexture.name = name;
+                
+                return newTexture;
+            }
+            return null;
+        }
+
+        internal static void WriteTo(Texture2D cacheTexture, string cacheFile)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(cacheFile + ".none"));
+            FileStream imgStream = new FileStream(cacheFile, FileMode.Create, FileAccess.Write);
+            imgStream.Position = 0;
+            byte[] png = cacheTexture.EncodeToPNG();
+            imgStream.Write(png, 0, png.Length);
+            imgStream.Close();
         }
     }
 }
