@@ -25,7 +25,7 @@ namespace TextureCompressor
             imageBuffer = null;
         }
 
-        public static void Resize(GameDatabase.TextureInfo texture, int width, int height, bool mipmaps, bool isNormalFormat)
+        public static void Resize(GameDatabase.TextureInfo texture, int width, int height, bool mipmaps, bool convertToNormalFormat)
         {
             TextureCompressor.DBGLog("Resizing...");
             Texture2D tex = texture.texture;
@@ -44,25 +44,26 @@ namespace TextureCompressor
             }
 
             Color32[] pixels = tex.GetPixels32();
-            if (texture.isNormalMap && !isNormalFormat)
+            if (convertToNormalFormat)
             {
                 ConvertToUnityNormalMap(pixels);
             }
+
+            Color32[] newPixels = ResizePixels(pixels, tex.width, tex.height, width, height);
             tex.Resize(width, height, format, mipmaps);
-            Color32[] newPixels = ResizePixels(pixels, tex, width, height);
             tex.SetPixels32(newPixels);
             tex.Apply(mipmaps);
         }
 
-        private static Color32[] ResizePixels(Color32[] pixels, Texture2D tex, int width, int height)
+        private static Color32[] ResizePixels(Color32[] pixels, int width, int height, int newWidth, int newHeight)
         {
-            Color32[] newPixels = new Color32[width * height];
+            Color32[] newPixels = new Color32[newWidth * newHeight];
             int index = 0;
-            for (int h = 0; h < height; h++)
+            for (int h = 0; h < newHeight; h++)
             {
-                for (int w = 0; w < width; w++)
+                for (int w = 0; w < newWidth; w++)
                 {
-                    newPixels[index++] = GetPixel(pixels, tex, ((float)w) / width, ((float)h) / height, width, height);
+                    newPixels[index++] = GetPixel(pixels, width, height, ((float)w) / newWidth, ((float)h) / newHeight, newWidth, newHeight);
                 }
             }
             return newPixels;
@@ -78,19 +79,19 @@ namespace TextureCompressor
             }
         }
 
-        private static Color32 GetPixel(Color32[] pixels, Texture2D tex, float w, float h, float width, float height)
+        private static Color32 GetPixel(Color32[] pixels, int width, int height, float w, float h, int newWidth, int newHeight)
         {
-            float widthDist = 4.0f - ((4.0f * (float)width) / tex.width);
-            float heightDist = 4.0f - ((4.0f * (float)height) / tex.height);
+            float widthDist = 4.0f - ((4.0f * (float)newWidth) / width);
+            float heightDist = 4.0f - ((4.0f * (float)newHeight) / height);
             int[,] posArray = new int[2, 4];
-            posArray[0, 0] = (int)Math.Floor((w * tex.width) - widthDist);
-            posArray[0, 1] = (int)Math.Floor(w * tex.width);
-            posArray[0, 2] = (int)Math.Ceiling((w * tex.width) + widthDist);
-            posArray[0, 3] = (int)Math.Ceiling((w * tex.width) + (2.0 * widthDist));
-            posArray[1, 0] = (int)Math.Floor((h * tex.height) - heightDist);
-            posArray[1, 1] = (int)Math.Floor(h * tex.height);
-            posArray[1, 2] = (int)Math.Ceiling((h * tex.height) + heightDist);
-            posArray[1, 3] = (int)Math.Ceiling((h * tex.height) + (2.0 * heightDist));
+            posArray[0, 0] = (int)Math.Floor((w * width) - widthDist);
+            posArray[0, 1] = (int)Math.Floor(w * width);
+            posArray[0, 2] = (int)Math.Ceiling((w * width) + widthDist);
+            posArray[0, 3] = (int)Math.Ceiling((w * width) + (2.0 * widthDist));
+            posArray[1, 0] = (int)Math.Floor((h * height) - heightDist);
+            posArray[1, 1] = (int)Math.Floor(h * height);
+            posArray[1, 2] = (int)Math.Ceiling((h * height) + heightDist);
+            posArray[1, 3] = (int)Math.Ceiling((h * height) + (2.0 * heightDist));
 
             Color32 cw1 = new Color32(), cw2 = new Color32(), cw3 = new Color32(), cw4 = new Color32(), ch1 = new Color32(), ch2 = new Color32(), ch3 = new Color32(), ch4 = new Color32();
             int w1 = posArray[0, 0];
@@ -102,31 +103,31 @@ namespace TextureCompressor
             int h3 = posArray[1, 2];
             int h4 = posArray[1, 3];
 
-            if (h2 >= 0 && h2 < tex.height)
+            if (h2 >= 0 && h2 < height)
             {
-                if (w2 >= 0 && w2 < tex.width)
+                if (w2 >= 0 && w2 < width)
                 {
-                    cw2 = pixels[w2+ (h2*tex.width)];
+                    cw2 = pixels[w2+ (h2*width)];
                 }
-                if (w1 >= 0 && w1 < tex.width)
+                if (w1 >= 0 && w1 < width)
                 {
-                    cw1 = pixels[w1 + (h2 * tex.width)];
+                    cw1 = pixels[w1 + (h2 * width)];
                 }
                 else
                 {
                     cw1 = cw2;
                 }
-                if (w3 >= 0 && w3 < tex.width)
+                if (w3 >= 0 && w3 < width)
                 {
-                    cw3 = pixels[w3 + (h2 * tex.width)];
+                    cw3 = pixels[w3 + (h2 * width)];
                 }
                 else
                 {
                     cw3 = cw2;
                 }
-                if (w4 >= 0 && w4 < tex.width)
+                if (w4 >= 0 && w4 < width)
                 {
-                    cw4 = pixels[w4 + (h2 * tex.width)];
+                    cw4 = pixels[w4 + (h2 * width)];
                 }
                 else
                 {
@@ -134,31 +135,31 @@ namespace TextureCompressor
                 }
 
             }
-            if (w2 >= 0 && w2 < tex.width)
+            if (w2 >= 0 && w2 < width)
             {
-                if (h2 >= 0 && h2 < tex.height)
+                if (h2 >= 0 && h2 < height)
                 {
-                    ch2 = pixels[w2 + (h2 * tex.width)];
+                    ch2 = pixels[w2 + (h2 * width)];
                 }
-                if (h1 >= 0 && h1 < tex.height)
+                if (h1 >= 0 && h1 < height)
                 {
-                    ch1 = pixels[w2 + (h1 * tex.width)];
+                    ch1 = pixels[w2 + (h1 * width)];
                 }
                 else
                 {
                     ch1 = ch2;
                 }
-                if (h3 >= 0 && h3 < tex.height)
+                if (h3 >= 0 && h3 < height)
                 {
-                    ch3 = pixels[w2 + (h3 * tex.width)];
+                    ch3 = pixels[w2 + (h3 * width)];
                 }
                 else
                 {
                     ch3 = ch2;
                 }
-                if (h4 >= 0 && h4 < tex.height)
+                if (h4 >= 0 && h4 < height)
                 {
-                    ch4 = pixels[w2 + (h4 * tex.width)];
+                    ch4 = pixels[w2 + (h4 * width)];
                 }
                 else
                 {
@@ -182,7 +183,7 @@ namespace TextureCompressor
             return color;
         }
 
-        public static void MBMToTexture(string file, GameDatabase.TextureInfo texture, bool mipmaps, bool isNormalFormat, int newWidth, int newHeight)
+        public static void MBMToTexture(string file, GameDatabase.TextureInfo texture, bool mipmaps, int newWidth, int newHeight)
         {
             TextureConverter.InitImageBuffer();
             FileStream mbmStream = new FileStream(file, FileMode.Open, FileAccess.Read);
@@ -200,11 +201,15 @@ namespace TextureCompressor
                 height |= (uint)(mbmStream.ReadByte() << 24);
             }
             mbmStream.Position = 12;
+            bool convertToNormalFormat = false;
             if (mbmStream.ReadByte() == 1)
             {
                 texture.isNormalMap = true;
             }
-            bool convertToNormalFormat = texture.isNormalMap == isNormalFormat ? false : true; 
+            else
+            {
+                convertToNormalFormat = texture.isNormalMap ? true : false;
+            }
 
             mbmStream.Position = 16;
             int format = mbmStream.ReadByte();
@@ -218,6 +223,10 @@ namespace TextureCompressor
                 imageSize += (int)(width * height);
                 texformat = TextureFormat.ARGB32;
                 alpha = true;
+            }
+            if (texture.isNormalMap)
+            {
+                texformat = TextureFormat.ARGB32;
             }
 
             mbmStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
@@ -248,12 +257,14 @@ namespace TextureCompressor
                 }
             }
 
+            
             bool resize = tex.width != newWidth || tex.height != newHeight;
+
             if (resize)
             {
+                colors = TextureConverter.ResizePixels(colors, (int)width, (int)height, newWidth, newHeight);
                 width = (uint)newWidth;
                 height = (uint)newHeight;
-                colors = TextureConverter.ResizePixels(colors, tex, (int)width, (int)height);
             }
             tex.Resize((int)width, (int)height, texformat, mipmaps);
             tex.SetPixels32(colors);
@@ -271,14 +282,20 @@ namespace TextureCompressor
 
             Texture2D tex = texture.texture;
             tex.LoadImage(imageBuffer);
-            bool convertToNormalFormat = texture.isNormalMap == isNormalFormat ? false : true;
+            bool convertToNormalFormat = texture.isNormalMap && !isNormalFormat ? true : false;
             bool hasMipmaps = tex.mipmapCount == 1 ? false : true;
             bool resize = tex.width != width || tex.height != height;
+            TextureFormat format = tex.format;
+            if(texture.isNormalMap)
+            {
+                format = TextureFormat.ARGB32;
+            }
+
             if(resize)
             {
-                TextureConverter.Resize(texture, width, height, mipmaps, isNormalFormat);
+                TextureConverter.Resize(texture, width, height, mipmaps, convertToNormalFormat);
             }
-            else if (convertToNormalFormat || hasMipmaps != mipmaps)
+            else if (convertToNormalFormat || hasMipmaps != mipmaps || format != tex.format)
             {
                 Color32[] pixels = tex.GetPixels32();
                 if (convertToNormalFormat)
@@ -290,13 +307,17 @@ namespace TextureCompressor
                         pixels[i].b = pixels[i].g;
                     }
                 }
+                if (tex.format != format || hasMipmaps != mipmaps)
+                {
+                    tex.Resize(tex.width, tex.height, format, mipmaps);
+                }
                 tex.SetPixels32(pixels);
                 tex.Apply(mipmaps);
             }
             
         }
 
-        public static void TGAToTexture(string file, GameDatabase.TextureInfo texture, bool mipmaps, bool isNormalFormat, int newWidth, int newHeight)
+        public static void TGAToTexture(string file, GameDatabase.TextureInfo texture, bool mipmaps, int newWidth, int newHeight)
         {
             TextureConverter.InitImageBuffer();
             FileStream tgaStream = new FileStream(file, FileMode.Open, FileAccess.Read);
@@ -310,7 +331,11 @@ namespace TextureCompressor
             int depth = imageBuffer[16];
             bool alpha = depth == 32 ? true : false;
             TextureFormat texFormat = depth == 32 ? TextureFormat.RGBA32 : TextureFormat.RGB24;
-            bool convertToNormalFormat = texture.isNormalMap == isNormalFormat ? false : true; 
+            if(texture.isNormalMap)
+            {
+                texFormat = TextureFormat.ARGB32;
+            }
+            bool convertToNormalFormat = texture.isNormalMap ? true : false; 
 
             Texture2D tex = texture.texture;
 
@@ -403,12 +428,14 @@ namespace TextureCompressor
                 TextureCompressor.DBGLog("TGA format is not supported!");
             }
 
+            
             bool resize = tex.width != newWidth || tex.height != newHeight;
+
             if (resize)
             {
+                colors = TextureConverter.ResizePixels(colors, width, height, newWidth, newHeight);
                 width = newWidth;
                 height = newHeight;
-                colors = TextureConverter.ResizePixels(colors, tex, width, height);
             }
             tex.Resize((int)width, (int)height, texFormat, mipmaps);
             tex.SetPixels32(colors);
@@ -423,8 +450,6 @@ namespace TextureCompressor
             String tgaPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".tga";
             if (File.Exists(pngPath) || File.Exists(jpgPath) || File.Exists(tgaPath) || File.Exists(mbmPath))
             {
-                bool isNormalFormat = Texture.name.EndsWith("_NRM");
-
                 Texture2D tex = new Texture2D(2, 2);
                 String name;
                 if (Texture.texture.name.Length > 0)
@@ -439,22 +464,22 @@ namespace TextureCompressor
                 GameDatabase.TextureInfo newTexture = new GameDatabase.TextureInfo(tex, Texture.isNormalMap, true, false);
                 if (File.Exists(pngPath))
                 {
-                    IMGToTexture(pngPath, newTexture, mipmaps, isNormalFormat, width, height);
+                    IMGToTexture(pngPath, newTexture, mipmaps, false, width, height);
                     tex.name = pngPath;
                 }
                 else if (File.Exists(jpgPath))
                 {
-                    IMGToTexture(jpgPath, newTexture, mipmaps, isNormalFormat, width, height);
+                    IMGToTexture(jpgPath, newTexture, mipmaps, false, width, height);
                     tex.name = jpgPath;
                 }
                 else if (File.Exists(tgaPath))
                 {
-                    TGAToTexture(tgaPath, newTexture, mipmaps, isNormalFormat, width, height);
+                    TGAToTexture(tgaPath, newTexture, mipmaps, width, height);
                     tex.name = tgaPath;
                 }
                 else if (File.Exists(mbmPath))
                 {
-                    MBMToTexture(mbmPath, newTexture, mipmaps, isNormalFormat, width, height);
+                    MBMToTexture(mbmPath, newTexture, mipmaps, width, height);
                     tex.name = mbmPath;
                 }
 
