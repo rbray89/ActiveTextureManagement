@@ -13,10 +13,9 @@ namespace TextureCompressor
         static String MD5String = "";
         static String LastFile = "";
 
-        public static GameDatabase.TextureInfo FetchCacheTexture(GameDatabase.TextureInfo Texture, int width, int height, bool compress, bool mipmaps, FilterMode filterMode, bool makeNotReadable)
+        public static GameDatabase.TextureInfo FetchCacheTexture(GameDatabase.TextureInfo Texture, int width, int height, bool compress, bool mipmaps, bool makeNotReadable)
         {
             String textureName = Texture.name;
-            bool isNormal = Texture.isNormalMap;
             String originalTextureFile = KSPUtil.ApplicationRootPath + "GameData/" + textureName;
             String cacheFile = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorCache/" + textureName;
             String cacheConfigFile = cacheFile + ".tcache";
@@ -40,14 +39,31 @@ namespace TextureCompressor
                     int.TryParse(cacheHeihtString, out cacheHeight);
 
                     String hashString = GetMD5String(originalTextureFile);
-                    if (cacheHash != hashString || cacheIsNorm != isNormal || width != cacheWidth || height != cacheHeight)
+                    if (cacheHash != hashString || cacheIsNorm != Texture.isNormalMap || width != cacheWidth || height != cacheHeight)
                     {
-                        return RebuildCache(Texture, width, height, compress, mipmaps, filterMode, makeNotReadable);
+                        if (cacheHash != hashString)
+                        {
+                            TextureCompressor.DBGLog(cacheHash + " != " + hashString);
+                        }
+                        if (cacheIsNorm != Texture.isNormalMap)
+                        {
+                            TextureCompressor.DBGLog(cacheIsNorm + " != " + Texture.isNormalMap);
+                        }
+                        if (width != cacheWidth)
+                        {
+                            TextureCompressor.DBGLog(width + " != " + cacheWidth);
+                        }
+                        if (height != cacheHeight)
+                        {
+                            TextureCompressor.DBGLog(height + " != " + cacheHeight);
+                        }
+                        return RebuildCache(Texture, width, height, compress, mipmaps, makeNotReadable);
                     }
                     else
                     {
+                        TextureCompressor.DBGLog("Loading from cache...");
                         Texture2D newTex = new Texture2D(4, 4);
-                        GameDatabase.TextureInfo cacheTexture = new GameDatabase.TextureInfo(newTex, isNormal, true, false);
+                        GameDatabase.TextureInfo cacheTexture = new GameDatabase.TextureInfo(newTex, Texture.isNormalMap, !makeNotReadable, compress);
                         bool hasMipmaps = newTex.mipmapCount == 1 ? false : true;
                         TextureConverter.IMGToTexture(cacheFile, cacheTexture, mipmaps, cacheIsNorm, width, height);
                         cacheTexture.name = textureName;
@@ -66,32 +82,24 @@ namespace TextureCompressor
                 }
                 else
                 {
-                    return RebuildCache(Texture, width, height, compress, mipmaps, filterMode, makeNotReadable);
+                    TextureCompressor.DBGLog("Texture " + originalTextureFile+ " does not exist!");
+                    return RebuildCache(Texture, width, height, compress, mipmaps, makeNotReadable);
                 }
             }
             else
             {
-                return RebuildCache(Texture, width, height, compress, mipmaps, filterMode, makeNotReadable);
+                return RebuildCache(Texture, width, height, compress, mipmaps, makeNotReadable);
             }
         }
 
-        private static GameDatabase.TextureInfo RebuildCache(GameDatabase.TextureInfo Texture, int width, int height, bool compress, bool mipmaps, FilterMode filterMode, bool makeNotReadable)
+        private static GameDatabase.TextureInfo RebuildCache(GameDatabase.TextureInfo Texture, int width, int height, bool compress, bool mipmaps, bool makeNotReadable)
         {
-            TextureCompressor.Log("Rebuilding Cache... " + Texture.name);
+            TextureCompressor.DBGLog("Rebuilding Cache... " + Texture.name);
             GameDatabase.TextureInfo cacheTexture;
-            bool isNormalFormat = Texture.name.EndsWith("_NRM");
-            bool hasMipmaps = Texture.texture.mipmapCount == 1 ? false : true;
-
-            Texture.isReadable = true;
-            try { Texture.texture.GetPixel(0, 0); }
-            catch
-            {
-                Texture.isReadable = false;
-            }
-
-            TextureCompressor.Log("Loading texture...");
-            cacheTexture = TextureConverter.GetReadable(Texture, mipmaps, isNormalFormat, width, height);
-            TextureCompressor.Log("Texture loaded.");
+            
+            TextureCompressor.DBGLog("Loading texture...");
+            cacheTexture = TextureConverter.GetReadable(Texture, mipmaps, width, height);
+            TextureCompressor.DBGLog("Texture loaded.");
 
             Texture2D tex = cacheTexture.texture;
 
@@ -99,41 +107,38 @@ namespace TextureCompressor
             String cacheFile = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorCache/" + textureName;
             TextureConverter.WriteTo(cacheTexture.texture, cacheFile);
 
-            tex.filterMode = filterMode;
             if (compress)
             {
                 tex.Compress(true);
-                cacheTexture.isCompressed = true;
             }
+            cacheTexture.isCompressed = compress;
             if (!makeNotReadable)
             {
                 tex.Apply(mipmaps);
-                cacheTexture.isReadable = true;
             }
             else
             {
                 tex.Apply(mipmaps, true);
-                cacheTexture.isReadable = false;
             }
+            cacheTexture.isReadable = !makeNotReadable;
 
             String originalTextureFile = cacheTexture.texture.name;
             cacheTexture.texture.name = cacheTexture.name;
             String cacheConfigFile = cacheFile + ".tcache";
-            ConfigNode config = ConfigNode.Load(cacheConfigFile) ?? new ConfigNode();
-            TextureCompressor.Log("Created Config for" + originalTextureFile);
+            
+            TextureCompressor.DBGLog("Created Config for" + originalTextureFile);
 
             String hashString = GetMD5String(originalTextureFile);
-            config.values.RemoveValues("");
-            config.AddValue("md5", hashString); TextureCompressor.Log("md5: " + hashString);
-            config.AddValue("orig_format", Path.GetExtension(originalTextureFile)); TextureCompressor.Log("orig_format: " + Path.GetExtension(originalTextureFile));
-            config.AddValue("is_normal", cacheTexture.isNormalMap.ToString()); TextureCompressor.Log("is_normal: " + cacheTexture.isNormalMap.ToString());
-            config.AddValue("width", width.ToString()); TextureCompressor.Log("width: " + width.ToString());
-            config.AddValue("height", height.ToString()); TextureCompressor.Log("height: " + height.ToString());
-            
-            
 
+            ConfigNode config = new ConfigNode();
+            config.AddValue("md5", hashString); TextureCompressor.DBGLog("md5: " + hashString);
+            config.AddValue("orig_format", Path.GetExtension(originalTextureFile)); TextureCompressor.DBGLog("orig_format: " + Path.GetExtension(originalTextureFile));
+            config.AddValue("is_normal", cacheTexture.isNormalMap.ToString()); TextureCompressor.DBGLog("is_normal: " + cacheTexture.isNormalMap.ToString());
+            config.AddValue("width", width.ToString()); TextureCompressor.DBGLog("width: " + width.ToString());
+            config.AddValue("height", height.ToString()); TextureCompressor.DBGLog("height: " + height.ToString());
+            
             config.Save(cacheConfigFile);
-            TextureCompressor.Log("Saved Config.");
+            TextureCompressor.DBGLog("Saved Config.");
 
             return cacheTexture;
         }
@@ -144,9 +149,10 @@ namespace TextureCompressor
             {
                 return MD5String;
             }
-            Stream stream = File.OpenRead(file);
+            FileStream stream = File.OpenRead(file);
             MD5 md5 = MD5.Create();
             byte[] hash = md5.ComputeHash(stream);
+            stream.Close();
             MD5String = BitConverter.ToString(hash);
             LastFile = file;
             return MD5String;

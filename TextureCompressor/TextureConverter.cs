@@ -27,7 +27,7 @@ namespace TextureCompressor
 
         public static void Resize(GameDatabase.TextureInfo texture, int width, int height, bool mipmaps, bool isNormalFormat)
         {
-            TextureCompressor.Log("Resizing...");
+            TextureCompressor.DBGLog("Resizing...");
             Texture2D tex = texture.texture;
             TextureFormat format = tex.format;
             if (texture.isNormalMap)
@@ -48,8 +48,8 @@ namespace TextureCompressor
             {
                 ConvertToUnityNormalMap(pixels);
             }
-            Color32[] newPixels = ResizePixels(pixels, tex, width, height);
             tex.Resize(width, height, format, mipmaps);
+            Color32[] newPixels = ResizePixels(pixels, tex, width, height);
             tex.SetPixels32(newPixels);
             tex.Apply(mipmaps);
         }
@@ -400,7 +400,7 @@ namespace TextureCompressor
             }
             else
             {
-                TextureCompressor.Log("TGA format is not supported!");
+                TextureCompressor.DBGLog("TGA format is not supported!");
             }
 
             bool resize = tex.width != newWidth || tex.height != newHeight;
@@ -415,15 +415,15 @@ namespace TextureCompressor
             tex.Apply(mipmaps, false);
         }
 
-        public static GameDatabase.TextureInfo GetReadable(GameDatabase.TextureInfo Texture, bool mipmaps, bool isNormalFormat, int width, int height)
+        public static GameDatabase.TextureInfo GetReadable(GameDatabase.TextureInfo Texture, bool mipmaps, int width, int height)
         {
-            TextureCompressor.Log("Re-loading texture...");
             String mbmPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".mbm";
             String pngPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".png";
             String jpgPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".jpg";
             String tgaPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".tga";
             if (File.Exists(pngPath) || File.Exists(jpgPath) || File.Exists(tgaPath) || File.Exists(mbmPath))
             {
+                bool isNormalFormat = Texture.name.EndsWith("_NRM");
 
                 Texture2D tex = new Texture2D(2, 2);
                 String name;
@@ -457,7 +457,7 @@ namespace TextureCompressor
                     MBMToTexture(mbmPath, newTexture, mipmaps, isNormalFormat, width, height);
                     tex.name = mbmPath;
                 }
-                Texture2D.DestroyImmediate(Texture.texture);
+
                 newTexture.name = name;
                 
                 return newTexture;
@@ -474,5 +474,6 @@ namespace TextureCompressor
             imgStream.Write(png, 0, png.Length);
             imgStream.Close();
         }
+
     }
 }

@@ -12,13 +12,13 @@ namespace TextureCompressor
     public class TextureCompressor : MonoBehaviour
     {
         static bool Compressed = false;
-        static bool Converted = false;
         static int LastTextureIndex = -1;
         static int gcCount = 0;
         static long memorySaved = 0;
-
+        static bool DBL_LOG = false;
+        
         const int GC_COUNT_TRIGGER = 20;
-
+        
         static ConfigNode config;
         static ConfigNode overrides;
         static List<String> overridesList = new List<string>();
@@ -54,37 +54,6 @@ namespace TextureCompressor
                     Log("MipMaps: " + texture.mipmapCount.ToString());
                     Log("Size: " + texture.width.ToString() + "x" + texture.height);
                     Log("Readable: " + Texture.isReadable);
-                    if (texture.name.Length > 0 && foldersList.Exists(n => texture.name.StartsWith(n)))
-                    {
-                        if(!Texture.isReadable)
-                        {
-                            continue;
-                        }
-                        bool mipmaps = false;
-                        bool makeNotReadable = false;
-                        ConfigNode overrideNode = overrides.GetNode(Texture.name);
-                        if (overrideNode != null)
-                        {
-                            String mipmapsString = overrideNode.GetValue("mipmaps");
-                            String make_not_readableString = overrideNode.GetValue("make_not_readable");
-                            bool.TryParse(mipmapsString, out mipmaps);
-                            bool.TryParse(make_not_readableString, out makeNotReadable);
-                        }
-                        else
-                        {
-                            mipmaps = TextureCompressor.config_mipmaps;
-                            makeNotReadable = TextureCompressor.config_make_not_readable;
-                            if (Texture.isNormalMap)
-                            {
-                                mipmaps = TextureCompressor.config_mipmaps_normals;
-                            }
-                        }
-                        if (!readableList.Contains(texture.name))
-                        {
-                            texture.Apply(mipmaps, makeNotReadable);
-                            Log("_Readable: " + !makeNotReadable);
-                        }
-                    }
                 }
                 int kbSaved = (int)(memorySaved / 1024f);
                 int mbSaved = (int)((memorySaved / 1024f) / 1024f);
@@ -93,7 +62,6 @@ namespace TextureCompressor
                 Log("Memory Saved : " + mbSaved.ToString() + "MB");
 
                 TextureConverter.DestroyImageBuffer();
-                Converted = true;
             }
         }
 
@@ -110,29 +78,28 @@ namespace TextureCompressor
                     {
                         GameDatabase.TextureInfo Texture = GameDatabase.Instance.databaseTexture[i];
                         LastTextureIndex = i;
-                        
+                        GameDatabase.TextureInfo replacementTex;
                         int originalWidth = Texture.texture.width;
                         int originalHeight = Texture.texture.height;
                         TextureFormat originalFormat = Texture.texture.format;
                         bool originalMipmaps = Texture.texture.mipmapCount == 1 ? false : true;
-                        Log("Looking at Texture: " + Texture.name);
-                        Log("Looking at Texture: " + Texture.texture.name);
                         if (Texture.name.Length > 0 && foldersList.Exists(n => Texture.name.StartsWith(n)))
                         {
-                            
-                            Texture.isNormalMap = normalList.Contains(Texture.name);
+                            SetNormalMap(Texture);
 
                             string overrideName = overridesList.Find(n => Texture.name.Length == Regex.Match(Texture.name, n).Length);
                             if (overrideName != null)
                             {
                                 ConfigNode overrideNode = overrides.GetNode(overrideName);
-                                ApplyNodeSettings(LastTextureIndex, Texture, overrideNode);
+                                replacementTex = ApplyNodeSettings(Texture, overrideNode);
                             }
                             else
                             {
-                                ApplySettings(LastTextureIndex, Texture);
+                                replacementTex = ApplySettings(Texture);
                             }
-                            Texture = GameDatabase.Instance.databaseTexture[i];
+                            GameDatabase.Instance.databaseTexture[LastTextureIndex] = replacementTex;
+                            Texture2D.DestroyImmediate(Texture.texture);
+                            Texture = replacementTex;
                         }
                         else if(config_compress)
                         {
@@ -147,6 +114,25 @@ namespace TextureCompressor
                         gcCount = 0;
                     }
                 }
+            }
+        }
+
+        private static void SetNormalMap(GameDatabase.TextureInfo Texture)
+        {
+            Texture.isNormalMap = Texture.name.EndsWith("_NRM") || normalList.Contains(Texture.name);
+            String originalTextureFile = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".mbm";
+            if (!Texture.isNormalMap && File.Exists(originalTextureFile))
+            {
+                FileStream stream = File.OpenRead(originalTextureFile);
+
+                //while stream is open, if it is an MBM, flag normal maps.
+                stream.Position = 12;
+                if (stream.ReadByte() == 1)
+                {
+                    Texture.isNormalMap = true;
+                }
+                
+                stream.Close();
             }
         }
 
@@ -173,8 +159,13 @@ namespace TextureCompressor
             {
                 String configString = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs/textureCompressor.tcfg";
                 ConfigNode settings = ConfigNode.Load(configString);
+                String dbg = settings.GetValue("DBG");
+                if(dbg != null)
+                {
+                    DBL_LOG = true;
+                }
                 config = settings.GetNode("COMPRESSOR");
-
+                
                 List<String> configfiles = new List<string>();
                 
                 if (System.IO.Directory.Exists(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs"))
@@ -258,17 +249,22 @@ namespace TextureCompressor
                 int.TryParse(scaleString_normals, out config_scale_normals);
                 int.TryParse(max_sizeString_normals, out config_max_size_normals);
 
-                Log("Settings:");
-                Log("   mipmaps: " + config_mipmaps);
-                Log("   compress: " + config_compress);
-                Log("   scale: " + config_scale);
-                Log("   max_size: " + config_max_size);
-                Log("   mipmaps_normals: " + config_mipmaps_normals);
-                Log("   compress_normals: " + config_compress_normals);
-                Log("   scale_normals: " + config_scale_normals);
-                Log("   max_size_normals: " + config_max_size_normals);
-                Log("   filter_mode: " + config_filter_mode);
-                Log("   make_not_readable: " + config_make_not_readable);
+                DBGLog("Settings:");
+                DBGLog("   mipmaps: " + config_mipmaps);
+                DBGLog("   compress: " + config_compress);
+                DBGLog("   scale: " + config_scale);
+                DBGLog("   max_size: " + config_max_size);
+                DBGLog("   mipmaps_normals: " + config_mipmaps_normals);
+                DBGLog("   compress_normals: " + config_compress_normals);
+                DBGLog("   scale_normals: " + config_scale_normals);
+                DBGLog("   max_size_normals: " + config_max_size_normals);
+                DBGLog("   filter_mode: " + config_filter_mode);
+                DBGLog("   make_not_readable: " + config_make_not_readable);
+                DBGLog("   normal List: ");
+                foreach(String normal in normalList)
+                {
+                    DBGLog("      "+normal);
+                }
             }
         }
 
@@ -287,7 +283,7 @@ namespace TextureCompressor
             }
         }
 
-        private void ApplyNodeSettings(int dbIndex, GameDatabase.TextureInfo Texture, ConfigNode overrideNode)
+        private GameDatabase.TextureInfo ApplyNodeSettings(GameDatabase.TextureInfo Texture, ConfigNode overrideNode)
         {
             String normalString = Texture.isNormalMap ? "_normals" : "";
             String mipmapsString = overrideNode.GetValue("mipmaps" + normalString);
@@ -338,11 +334,11 @@ namespace TextureCompressor
             Texture2D tex = Texture.texture;
             TextureFormat format = tex.format;
 
-            UpdateTex(dbIndex, Texture, local_compress, local_mipmaps, local_scale, filter_mode, local_not_readable, local_max_size);
+            return UpdateTex(Texture, local_compress, local_mipmaps, local_scale, filter_mode, local_not_readable, local_max_size);
 
         }
 
-        private void ApplySettings(int dbIndex, GameDatabase.TextureInfo Texture)
+        private GameDatabase.TextureInfo ApplySettings(GameDatabase.TextureInfo Texture)
         {
             bool mipmaps = TextureCompressor.config_mipmaps;
             bool compress = TextureCompressor.config_compress;
@@ -356,22 +352,16 @@ namespace TextureCompressor
                 max_size = TextureCompressor.config_max_size_normals;
             }
 
-            UpdateTex(dbIndex, Texture, compress, mipmaps, scale, config_filter_mode, config_make_not_readable, max_size);
+            return UpdateTex( Texture, compress, mipmaps, scale, config_filter_mode, config_make_not_readable, max_size);
 
         }
 
-        private void UpdateTex(int dbIndex, GameDatabase.TextureInfo Texture, bool compress, bool mipmaps, int scale, FilterMode filterMode, bool makeNotReadable, int max_size)
+        private GameDatabase.TextureInfo UpdateTex(GameDatabase.TextureInfo Texture, bool compress, bool mipmaps, int scale, FilterMode filterMode, bool makeNotReadable, int max_size)
         {
-            try { Texture.texture.GetPixel(0, 0); }
-            catch { return; }
             Texture2D tex = Texture.texture;
-            TextureFormat originalFormat = tex.format;
-            
-            int originalWidth = tex.width;
-            int originalHeight = tex.height;
+                        
             int width = tex.width / scale;
             int height = tex.height / scale;
-            bool hasMipmaps = tex.mipmapCount == 1 ? false : true;
             
             int tmpScale = scale-1;
             while (width < 1 && tmpScale > 0)
@@ -396,32 +386,35 @@ namespace TextureCompressor
                 }
             }
 
-            GameDatabase.Instance.databaseTexture[dbIndex] = CacheController.FetchCacheTexture(Texture, width, height, compress, mipmaps, filterMode, makeNotReadable && !readableList.Contains(Texture.name));
+            GameDatabase.TextureInfo ret = CacheController.FetchCacheTexture(Texture, width, height, compress, mipmaps, makeNotReadable && !readableList.Contains(Texture.name));
+            ret.texture.filterMode = filterMode;
+            return ret;
 
         }
 
         private void updateMemoryCount(int originalWidth, int originalHeight, TextureFormat originalFormat, bool originalMipmaps, GameDatabase.TextureInfo Texture)
         {
+            DBGLog("Texture replaced!");
             int width = Texture.texture.width;
             int height = Texture.texture.height;
             TextureFormat format = Texture.texture.format;
             bool mipmaps = Texture.texture.mipmapCount == 1 ? false : true;
-            Log("Texture: " + Texture.name);
-            Log("is normalmap: " + Texture.isNormalMap);
+            DBGLog("Texture: " + Texture.name);
+            DBGLog("is normalmap: " + Texture.isNormalMap);
             Texture2D tex = Texture.texture;
-            Log("originalWidth: " + originalWidth);
-            Log("originalHeight: " + originalHeight);
-            Log("originalFormat: " + originalFormat);
-            Log("originalMipmaps: " + originalMipmaps);
-            Log("width: " + width);
-            Log("height: " + height);
-            Log("format: " + format);
-            Log("mipmaps: " + mipmaps);
+            DBGLog("originalWidth: " + originalWidth);
+            DBGLog("originalHeight: " + originalHeight);
+            DBGLog("originalFormat: " + originalFormat);
+            DBGLog("originalMipmaps: " + originalMipmaps);
+            DBGLog("width: " + width);
+            DBGLog("height: " + height);
+            DBGLog("format: " + format);
+            DBGLog("mipmaps: " + mipmaps);
             bool readable = true;
             try{tex.GetPixel(0,0);}catch{readable = false;};
-            Log("readable: " + readable);
+            DBGLog("readable: " + readable);
             if(readable != Texture.isReadable)
-            { Log("Readbility does not match!"); }
+            { DBGLog("Readbility does not match!"); }
             int oldSize = 0;
             int newSize = 0;
             switch (originalFormat)
@@ -473,14 +466,20 @@ namespace TextureCompressor
                 newSize += (int)(newSize * .33f);
             }
             int saved = (oldSize - newSize);
-            if (saved > 0)
-            {
-                memorySaved += saved;
-            }
-            Log("Saved " + saved + "B");
-            Log("Accumulated Saved " + memorySaved + "B");
+
+            memorySaved += saved;
+            
+            DBGLog("Saved " + saved + "B");
+            DBGLog("Accumulated Saved " + memorySaved + "B");
         }
 
+        public static void DBGLog(String message)
+        {
+            if (DBL_LOG)
+            {
+                UnityEngine.Debug.Log("TextureCompressor: " + message);
+            }
+        }
         public static void Log(String message)
         {
             UnityEngine.Debug.Log("TextureCompressor: " + message);
