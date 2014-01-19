@@ -4,7 +4,7 @@ OVERRIDES
 	000_Toolbar/.*
 	{
 		compress = true
-		mipmaps = false
+		mipmaps = true
 		scale = 1
 		max_size = 0
 	}
