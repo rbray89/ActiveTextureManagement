@@ -25,6 +25,8 @@ namespace TextureCompressor
         static List<String> foldersList = new List<string>();
         static List<String> readableList = new List<string>();
         static List<String> normalList = new List<string>();
+        static List<String> foldersExList = new List<string>();
+        static Dictionary<String, long> folderBytesSaved = new Dictionary<string, long>();
 
         static bool config_mipmaps = false;
         static bool config_compress = true;
@@ -55,14 +57,68 @@ namespace TextureCompressor
                     Log("Size: " + texture.width.ToString() + "x" + texture.height);
                     Log("Readable: " + Texture.isReadable);
                 }
-                int kbSaved = (int)(memorySaved / 1024f);
-                int mbSaved = (int)((memorySaved / 1024f) / 1024f);
-                Log("Memory Saved : " + memorySaved.ToString() + "B");
+                long bSaved = memorySaved;
+                long kbSaved = (long)(bSaved / 1024f);
+                long mbSaved = (long)(kbSaved / 1024f);
+                Log("Memory Saved : " + bSaved.ToString() + "B");
                 Log("Memory Saved : " + kbSaved.ToString() + "kB");
                 Log("Memory Saved : " + mbSaved.ToString() + "MB");
 
                 TextureConverter.DestroyImageBuffer();
             }
+        }
+
+        private GUISkin _mySkin;
+        private Rect _mainWindowRect = new Rect(5, 5, 640, 260);
+        static Vector2 ScrollFolderList = Vector2.zero;
+        int selectedFolder = -1;
+
+        private void OnGUI()
+        {
+            GUI.skin = _mySkin;
+            if (HighLogic.LoadedScene == GameScenes.MAINMENU)
+            {
+                _mainWindowRect = GUI.Window(0x8100, _mainWindowRect, DrawMainWindow, "Texture Management");
+            }
+        }
+
+        private void DrawMainWindow(int windowID)
+        {
+            
+            GUIStyle gs = new GUIStyle(GUI.skin.label);
+            gs.font = Font.
+            gs.alignment = TextAnchor.MiddleCenter;
+            int itemFullWidth = (int)_mainWindowRect.width - 30;
+            int itemHalfWidth = (int)_mainWindowRect.width/2 - 20;
+            int itemMidStart = (int)_mainWindowRect.width - (15 + itemHalfWidth);
+            GUI.Label(new Rect(15, 20, itemHalfWidth, 25), "Folder", gs);
+
+                
+            GUI.Box(new Rect(10, 50, itemHalfWidth, 115), "");
+            String[] folderList = foldersExList.ToArray();
+            ScrollFolderList = GUI.BeginScrollView(new Rect(15, 55, itemHalfWidth - 10, 100), ScrollFolderList, new Rect(0, 0, itemHalfWidth - 30, 25 * folderList.Length));
+            float layerWidth = folderList.Length > 4 ? itemHalfWidth - 30 : itemHalfWidth - 10;
+            selectedFolder = selectedFolder >= folderList.Length ? 0 : selectedFolder;
+            int OldSelectedLayer = selectedFolder;
+            selectedFolder = GUI.SelectionGrid(new Rect(0, 0, layerWidth, 25 * folderList.Length), selectedFolder, folderList, 1);
+            GUI.EndScrollView();
+
+            String memFormatString = "{0,10}B {1,7}kB {2,4}MB";
+
+            long bSaved = folderBytesSaved[folderList[selectedFolder]];
+            long kbSaved = (long)(bSaved / 1024f);
+            long mbSaved = (long)(kbSaved / 1024f);
+            String memoryString = String.Format("Memory Saved: " + memFormatString, bSaved, kbSaved, mbSaved);
+            GUI.Label(new Rect(itemMidStart, 50, itemHalfWidth, 115), memoryString);
+
+            bSaved = memorySaved;
+            kbSaved = (long)(bSaved / 1024f);
+            mbSaved = (long)(kbSaved / 1024f);
+            String totalMemoryString = String.Format("Total Memory Saved: "+memFormatString, bSaved, kbSaved, mbSaved);
+            GUI.Label(new Rect(15, 170, itemFullWidth, 25), totalMemoryString);
+
+            GUI.DragWindow(new Rect(0, 0, 10000, 10000));
+
         }
 
         protected void Update()
@@ -83,8 +139,14 @@ namespace TextureCompressor
                         int originalHeight = Texture.texture.height;
                         TextureFormat originalFormat = Texture.texture.format;
                         bool originalMipmaps = Texture.texture.mipmapCount == 1 ? false : true;
+                        String folder = "UNMANAGED";
                         if (Texture.name.Length > 0 && foldersList.Exists(n => Texture.name.StartsWith(n)))
                         {
+                            folder = foldersList.First(n => Texture.name.StartsWith(n));
+                            if(!foldersExList.Contains(folder))
+                            {
+                                foldersExList.Add(folder);
+                            }
                             SetNormalMap(Texture);
 
                             string overrideName = overridesList.Find(n => Texture.name.Length == Regex.Match(Texture.name, n).Length);
@@ -99,13 +161,14 @@ namespace TextureCompressor
                             }
                             GameDatabase.Instance.databaseTexture[LastTextureIndex] = replacementTex;
                             Texture2D.DestroyImmediate(Texture.texture);
+                            Texture.texture = null;
                             Texture = replacementTex;
                         }
                         else if(config_compress)
                         {
                             tryCompress(Texture);
                         }
-                        updateMemoryCount(originalWidth, originalHeight, originalFormat, originalMipmaps, Texture);
+                        updateMemoryCount(originalWidth, originalHeight, originalFormat, originalMipmaps, Texture, folder);
                         gcCount++;
                     }
                     if (gcCount > GC_COUNT_TRIGGER)
@@ -170,7 +233,7 @@ namespace TextureCompressor
                 
                 if (System.IO.Directory.Exists(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs"))
                 {
-                    configfiles.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs", "*.tcfg", System.IO.SearchOption.AllDirectories));
+                    configfiles.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData", "*.tcfg", System.IO.SearchOption.AllDirectories));
                 }
 
                 overrides = settings.GetNode("OVERRIDES");
@@ -249,18 +312,18 @@ namespace TextureCompressor
                 int.TryParse(scaleString_normals, out config_scale_normals);
                 int.TryParse(max_sizeString_normals, out config_max_size_normals);
 
-                DBGLog("Settings:");
-                DBGLog("   mipmaps: " + config_mipmaps);
-                DBGLog("   compress: " + config_compress);
-                DBGLog("   scale: " + config_scale);
-                DBGLog("   max_size: " + config_max_size);
-                DBGLog("   mipmaps_normals: " + config_mipmaps_normals);
-                DBGLog("   compress_normals: " + config_compress_normals);
-                DBGLog("   scale_normals: " + config_scale_normals);
-                DBGLog("   max_size_normals: " + config_max_size_normals);
-                DBGLog("   filter_mode: " + config_filter_mode);
-                DBGLog("   make_not_readable: " + config_make_not_readable);
-                DBGLog("   normal List: ");
+                Log("Settings:");
+                Log("   mipmaps: " + config_mipmaps);
+                Log("   compress: " + config_compress);
+                Log("   scale: " + config_scale);
+                Log("   max_size: " + config_max_size);
+                Log("   mipmaps_normals: " + config_mipmaps_normals);
+                Log("   compress_normals: " + config_compress_normals);
+                Log("   scale_normals: " + config_scale_normals);
+                Log("   max_size_normals: " + config_max_size_normals);
+                Log("   filter_mode: " + config_filter_mode);
+                Log("   make_not_readable: " + config_make_not_readable);
+                Log("   normal List: ");
                 foreach(String normal in normalList)
                 {
                     DBGLog("      "+normal);
@@ -392,7 +455,7 @@ namespace TextureCompressor
 
         }
 
-        private void updateMemoryCount(int originalWidth, int originalHeight, TextureFormat originalFormat, bool originalMipmaps, GameDatabase.TextureInfo Texture)
+        private void updateMemoryCount(int originalWidth, int originalHeight, TextureFormat originalFormat, bool originalMipmaps, GameDatabase.TextureInfo Texture, String folder)
         {
             DBGLog("Texture replaced!");
             int width = Texture.texture.width;
@@ -468,9 +531,16 @@ namespace TextureCompressor
             int saved = (oldSize - newSize);
 
             memorySaved += saved;
-            
-            DBGLog("Saved " + saved + "B");
-            DBGLog("Accumulated Saved " + memorySaved + "B");
+
+            if (!folderBytesSaved.ContainsKey(folder))
+            {
+                folderBytesSaved.Add(folder, 0);
+            }
+            long folderSaved = folderBytesSaved[folder] + saved;
+            folderBytesSaved[folder] = folderSaved;
+
+            Log("Saved " + saved + "B");
+            Log("Accumulated Saved " + memorySaved + "B");
         }
 
         public static void DBGLog(String message)
