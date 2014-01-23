@@ -65,58 +65,65 @@ namespace TextureCompressor
                 Log("Memory Saved : " + mbSaved.ToString() + "MB");
 
                 TextureConverter.DestroyImageBuffer();
+                Resources.UnloadUnusedAssets();
+                System.GC.Collect();
             }
         }
 
         private GUISkin _mySkin;
-        private Rect _mainWindowRect = new Rect(5, 5, 640, 260);
+        private Rect _mainWindowRect = new Rect(5, 5, 640, 240);
         static Vector2 ScrollFolderList = Vector2.zero;
-        int selectedFolder = -1;
-
+        int selectedFolder = 0;
+        int selectedMode = 0;
+        bool guiEnabled = false;
+        ConfigNode guiConfig = null;
         private void OnGUI()
         {
             GUI.skin = _mySkin;
-            if (HighLogic.LoadedScene == GameScenes.MAINMENU)
+            if (HighLogic.LoadedScene == GameScenes.MAINMENU && guiEnabled)
             {
-                _mainWindowRect = GUI.Window(0x8100, _mainWindowRect, DrawMainWindow, "Texture Management");
+                GUI.backgroundColor = new Color(0, 0, 0, 1);
+                String memFormatString = "{0,10}B {1,7}kB {2,4}MB";
+                long bSaved = memorySaved;
+                long kbSaved = (long)(bSaved / 1024f);
+                long mbSaved = (long)(kbSaved / 1024f);
+                String totalMemoryString = String.Format("Total Memory Saved: " + memFormatString, bSaved, kbSaved, mbSaved);
+                _mainWindowRect = GUI.Window(0x8100, _mainWindowRect, DrawMainWindow, totalMemoryString);
             }
         }
 
         private void DrawMainWindow(int windowID)
         {
-            
             GUIStyle gs = new GUIStyle(GUI.skin.label);
-            gs.font = Font.
+
             gs.alignment = TextAnchor.MiddleCenter;
             int itemFullWidth = (int)_mainWindowRect.width - 30;
             int itemHalfWidth = (int)_mainWindowRect.width/2 - 20;
             int itemMidStart = (int)_mainWindowRect.width - (15 + itemHalfWidth);
-            GUI.Label(new Rect(15, 20, itemHalfWidth, 25), "Folder", gs);
-
                 
-            GUI.Box(new Rect(10, 50, itemHalfWidth, 115), "");
+            GUI.Box(new Rect(10, 20, itemHalfWidth, 215), "");
             String[] folderList = foldersExList.ToArray();
-            ScrollFolderList = GUI.BeginScrollView(new Rect(15, 55, itemHalfWidth - 10, 100), ScrollFolderList, new Rect(0, 0, itemHalfWidth - 30, 25 * folderList.Length));
-            float layerWidth = folderList.Length > 4 ? itemHalfWidth - 30 : itemHalfWidth - 10;
+            ScrollFolderList = GUI.BeginScrollView(new Rect(15, 25, itemHalfWidth - 10, 200), ScrollFolderList, new Rect(0, 0, itemHalfWidth - 30, 25 * folderList.Length));
+            float folderWidth = folderList.Length > 8 ? itemHalfWidth - 30 : itemHalfWidth - 10;
             selectedFolder = selectedFolder >= folderList.Length ? 0 : selectedFolder;
-            int OldSelectedLayer = selectedFolder;
-            selectedFolder = GUI.SelectionGrid(new Rect(0, 0, layerWidth, 25 * folderList.Length), selectedFolder, folderList, 1);
+            int OldSelectedFolder = selectedFolder;
+            selectedFolder = GUI.SelectionGrid(new Rect(0, 0, folderWidth, 25 * folderList.Length), selectedFolder, folderList, 1);
             GUI.EndScrollView();
 
-            String memFormatString = "{0,10}B {1,7}kB {2,4}MB";
+            if(OldSelectedFolder != selectedFolder || guiConfig == null)
+            {
+                guiConfig = ConfigNode.Load(KSPUtil.ApplicationRootPath + "GameData/"+folderList[selectedFolder] + ".tcfg");
+            }
 
+            String memFormatString = "{0,10}B {1,7}kB {2,4}MB";
             long bSaved = folderBytesSaved[folderList[selectedFolder]];
             long kbSaved = (long)(bSaved / 1024f);
             long mbSaved = (long)(kbSaved / 1024f);
             String memoryString = String.Format("Memory Saved: " + memFormatString, bSaved, kbSaved, mbSaved);
-            GUI.Label(new Rect(itemMidStart, 50, itemHalfWidth, 115), memoryString);
-
-            bSaved = memorySaved;
-            kbSaved = (long)(bSaved / 1024f);
-            mbSaved = (long)(kbSaved / 1024f);
-            String totalMemoryString = String.Format("Total Memory Saved: "+memFormatString, bSaved, kbSaved, mbSaved);
-            GUI.Label(new Rect(15, 170, itemFullWidth, 25), totalMemoryString);
-
+            GUI.Label(new Rect(itemMidStart, 20, itemHalfWidth, 25), memoryString);
+            String[] Modes = {"Normal List", "Overrides"};
+            selectedMode = GUI.Toolbar(new Rect(itemMidStart, 50, itemHalfWidth, 25), selectedMode, Modes);
+            
             GUI.DragWindow(new Rect(0, 0, 10000, 10000));
 
         }
@@ -143,12 +150,8 @@ namespace TextureCompressor
                         if (Texture.name.Length > 0 && foldersList.Exists(n => Texture.name.StartsWith(n)))
                         {
                             folder = foldersList.First(n => Texture.name.StartsWith(n));
-                            if(!foldersExList.Contains(folder))
-                            {
-                                foldersExList.Add(folder);
-                            }
                             SetNormalMap(Texture);
-
+                            Texture2D oldTex = Texture.texture;
                             string overrideName = overridesList.Find(n => Texture.name.Length == Regex.Match(Texture.name, n).Length);
                             if (overrideName != null)
                             {
@@ -159,14 +162,19 @@ namespace TextureCompressor
                             {
                                 replacementTex = ApplySettings(Texture);
                             }
-                            GameDatabase.Instance.databaseTexture[LastTextureIndex] = replacementTex;
-                            Texture2D.DestroyImmediate(Texture.texture);
-                            Texture.texture = null;
                             Texture = replacementTex;
+                            GameDatabase.Instance.databaseTexture[LastTextureIndex] = replacementTex;
+                            //try { oldTex.GetPixel(0, 0); oldTex.Apply(false, true); }
+                            //catch { }
+                            Texture2D.DestroyImmediate(oldTex);
                         }
                         else if(config_compress)
                         {
                             tryCompress(Texture);
+                        }
+                        if (!foldersExList.Contains(folder))
+                        {
+                            foldersExList.Add(folder);
                         }
                         updateMemoryCount(originalWidth, originalHeight, originalFormat, originalMipmaps, Texture, folder);
                         gcCount++;
@@ -176,6 +184,14 @@ namespace TextureCompressor
                         System.GC.Collect();
                         gcCount = 0;
                     }
+                }
+            }
+            else if (HighLogic.LoadedScene == GameScenes.MAINMENU)
+            {
+                bool alt = (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt));
+                if (alt && Input.GetKeyDown(KeyCode.M))
+                {
+                    guiEnabled = !guiEnabled;
                 }
             }
         }
