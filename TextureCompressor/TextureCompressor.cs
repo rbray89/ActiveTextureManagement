@@ -99,20 +99,26 @@ namespace TextureCompressor
             gs.alignment = TextAnchor.MiddleCenter;
             int itemFullWidth = (int)_mainWindowRect.width - 30;
             int itemHalfWidth = (int)_mainWindowRect.width/2 - 20;
+            int itemQuarterWidth = (int)_mainWindowRect.width / 4 - 20;
             int itemMidStart = (int)_mainWindowRect.width - (15 + itemHalfWidth);
-                
-            GUI.Box(new Rect(10, 20, itemHalfWidth, 215), "");
+            int itemThirdWidth = (int)_mainWindowRect.width / 3 - 20;
+            int itemTwoThirdStart = itemThirdWidth + 20;
+            int itemQuarterThirdWidth = itemHalfWidth + 5 - itemTwoThirdStart;
+
+            GUI.Box(new Rect(10, 50, itemThirdWidth, 190), "");
             String[] folderList = foldersExList.ToArray();
-            ScrollFolderList = GUI.BeginScrollView(new Rect(15, 25, itemHalfWidth - 10, 200), ScrollFolderList, new Rect(0, 0, itemHalfWidth - 30, 25 * folderList.Length));
-            float folderWidth = folderList.Length > 8 ? itemHalfWidth - 30 : itemHalfWidth - 10;
+            ScrollFolderList = GUI.BeginScrollView(new Rect(15, 55, itemThirdWidth - 10, 175), ScrollFolderList, new Rect(0, 0, itemThirdWidth - 30, 25 * folderList.Length));
+            float folderWidth = folderList.Length > 7 ? itemThirdWidth - 30 : itemThirdWidth - 10;
             selectedFolder = selectedFolder >= folderList.Length ? 0 : selectedFolder;
             int OldSelectedFolder = selectedFolder;
             selectedFolder = GUI.SelectionGrid(new Rect(0, 0, folderWidth, 25 * folderList.Length), selectedFolder, folderList, 1);
             GUI.EndScrollView();
 
-            if(OldSelectedFolder != selectedFolder || guiConfig == null)
+            String folder = folderList[selectedFolder];
+            if( folder != "UNMANAGED" && (OldSelectedFolder != selectedFolder || guiConfig == null))
             {
-                guiConfig = ConfigNode.Load(KSPUtil.ApplicationRootPath + "GameData/"+folderList[selectedFolder] + ".tcfg");
+                String config = System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData", "*"+folder + ".tcfg", System.IO.SearchOption.AllDirectories)[0];
+                guiConfig = ConfigNode.Load(config);
             }
 
             String memFormatString = "{0,10}B {1,7}kB {2,4}MB";
@@ -120,10 +126,13 @@ namespace TextureCompressor
             long kbSaved = (long)(bSaved / 1024f);
             long mbSaved = (long)(kbSaved / 1024f);
             String memoryString = String.Format("Memory Saved: " + memFormatString, bSaved, kbSaved, mbSaved);
-            GUI.Label(new Rect(itemMidStart, 20, itemHalfWidth, 25), memoryString);
+            GUI.Label(new Rect(itemMidStart, 55, itemHalfWidth, 25), memoryString);
+
             String[] Modes = {"Normal List", "Overrides"};
-            selectedMode = GUI.Toolbar(new Rect(itemMidStart, 50, itemHalfWidth, 25), selectedMode, Modes);
-            
+            //selectedMode = GUI.SelectionGrid(new Rect(itemTwoThirdStart, 25, itemQuarterThirdWidth, 25 * Modes.Length), selectedMode, Modes, 1);
+            selectedMode = GUI.Toolbar(new Rect(itemMidStart, 25, itemHalfWidth, 25), selectedMode, Modes);
+
+
             GUI.DragWindow(new Rect(0, 0, 10000, 10000));
 
         }
