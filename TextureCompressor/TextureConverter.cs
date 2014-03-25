@@ -9,7 +9,7 @@ namespace TextureCompressor
 {
     class TextureConverter
     {
-        const int MAX_IMAGE_SIZE = 4048 * 4048 * 4;
+        const int MAX_IMAGE_SIZE = 4048 * 4048 * 5;
         static byte[] imageBuffer = null;
 
         public static void InitImageBuffer()
@@ -442,7 +442,7 @@ namespace TextureCompressor
             tex.Apply(mipmaps, false);
         }
 
-        public static GameDatabase.TextureInfo GetReadable(GameDatabase.TextureInfo Texture, bool mipmaps, int width, int height)
+        public static GameDatabase.TextureInfo GetReadable(TexInfo Texture, bool mipmaps)
         {
             String mbmPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".mbm";
             String pngPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".png";
@@ -452,9 +452,9 @@ namespace TextureCompressor
             {
                 Texture2D tex = new Texture2D(2, 2);
                 String name;
-                if (Texture.texture.name.Length > 0)
+                if (Texture.name.Length > 0)
                 {
-                    name = Texture.texture.name;
+                    name = Texture.name;
                 }
                 else
                 {
@@ -464,22 +464,22 @@ namespace TextureCompressor
                 GameDatabase.TextureInfo newTexture = new GameDatabase.TextureInfo(tex, Texture.isNormalMap, true, false);
                 if (File.Exists(pngPath))
                 {
-                    IMGToTexture(pngPath, newTexture, mipmaps, false, width, height);
+                    IMGToTexture(pngPath, newTexture, mipmaps, false, Texture.resizeWidth, Texture.resizeHeight);
                     tex.name = pngPath;
                 }
                 else if (File.Exists(jpgPath))
                 {
-                    IMGToTexture(jpgPath, newTexture, mipmaps, false, width, height);
+                    IMGToTexture(jpgPath, newTexture, mipmaps, false, Texture.resizeWidth, Texture.resizeHeight);
                     tex.name = jpgPath;
                 }
                 else if (File.Exists(tgaPath))
                 {
-                    TGAToTexture(tgaPath, newTexture, mipmaps, width, height);
+                    TGAToTexture(tgaPath, newTexture, mipmaps, Texture.resizeWidth, Texture.resizeHeight);
                     tex.name = tgaPath;
                 }
                 else if (File.Exists(mbmPath))
                 {
-                    MBMToTexture(mbmPath, newTexture, mipmaps, width, height);
+                    MBMToTexture(mbmPath, newTexture, mipmaps, Texture.resizeWidth, Texture.resizeHeight);
                     tex.name = mbmPath;
                 }
 
@@ -492,7 +492,12 @@ namespace TextureCompressor
 
         internal static void WriteTo(Texture2D cacheTexture, string cacheFile)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(cacheFile + ".none"));
+            String directory = Path.GetDirectoryName(cacheFile + ".none");
+            if (File.Exists(directory))
+            {
+                File.Delete(directory);
+            }
+            Directory.CreateDirectory(directory);
             FileStream imgStream = new FileStream(cacheFile, FileMode.Create, FileAccess.Write);
             imgStream.Position = 0;
             byte[] png = cacheTexture.EncodeToPNG();

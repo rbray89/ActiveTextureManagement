@@ -1,0 +1,12 @@
+config_enabled = true
+OVERRIDES
+{
+	KSO/RPM/.*
+	{
+		compress = false
+		mipmaps = false
+		scale = 1
+		max_size = 0
+		make_not_readable = false
+	}
+}
