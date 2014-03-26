@@ -14,26 +14,6 @@ namespace TextureCompressor
         static String MD5String = "";
         static String LastFile = "";
 
-        public static TexInfo LoadCacheTextureInfo(String name)
-        {
-            String cacheConfig = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorCache/" + name + ".tcache";
-            if (File.Exists(cacheConfig))
-            {
-                    ConfigNode config = ConfigNode.Load(cacheConfig);
-                    string swidth = config.GetValue("orig_width");
-                    string sheight = config.GetValue("orig_height");
-                    if (swidth != null && sheight != null)
-                    {
-                        int width, height;
-                        int.TryParse(swidth, out width);
-                        int.TryParse(sheight, out height);
-                        TexInfo t = new TexInfo(name, width, height);
-                        return t;
-                    }
-             }
-            return null;
-        }
-
         public static GameDatabase.TextureInfo FetchCacheTexture(TexInfo Texture, bool compress, bool mipmaps, bool makeNotReadable)
         {
             String textureName = Texture.name;
@@ -46,10 +26,24 @@ namespace TextureCompressor
                 ConfigNode config = ConfigNode.Load(cacheConfigFile);
                 string format = config.GetValue("orig_format");
                 String cacheHash = config.GetValue("md5");
+                int origWidth, origHeight;
+                string origWidthString = config.GetValue("orig_width");
+                string origHeightString = config.GetValue("orig_height");
+                int.TryParse(origWidthString, out origWidth);
+                int.TryParse(origHeightString, out origHeight);
+
+                if (origWidthString == null || origHeightString == null ||
+                    cacheHash == null || format == null)
+                {
+                    return RebuildCache(Texture, compress, mipmaps, makeNotReadable);
+                }
+
                 originalTextureFile += format;
                 String hashString = GetMD5String(originalTextureFile);
 
-                if (format != null && File.Exists(originalTextureFile + format) && File.Exists(cacheFile))
+                Texture.Resize(origWidth, origHeight);
+
+                if (format != null && File.Exists(originalTextureFile) && File.Exists(cacheFile))
                 {
                     
                     String cacheIsNormString = config.GetValue("is_normal");
@@ -84,14 +78,17 @@ namespace TextureCompressor
                     }
                     else if (cacheHash == hashString && !Texture.needsResize)
                     {
-                        return LoadDefaultTexture(Texture, mipmaps, makeNotReadable, compress);
+                        return RebuildCache(Texture, compress, mipmaps, makeNotReadable);
                     }
                     else
                     {
-                        TextureCompressor.DBGLog("Loading from cache...");
+                        TextureCompressor.DBGLog("Loading from cache... " + textureName);
+                        Texture.needsResize = false;
                         Texture2D newTex = new Texture2D(4, 4);
                         GameDatabase.TextureInfo cacheTexture = new GameDatabase.TextureInfo(newTex, Texture.isNormalMap, !makeNotReadable, compress);
-                        TextureConverter.IMGToTexture(cacheFile, cacheTexture, mipmaps, cacheIsNorm, Texture.resizeWidth, Texture.resizeHeight);
+                        Texture.texture = cacheTexture;
+                        Texture.filename = cacheFile;
+                        TextureConverter.IMGToTexture(Texture, mipmaps, cacheIsNorm);
                         cacheTexture.name = textureName;
                         newTex.name = textureName;
                         if (compress)
@@ -102,73 +99,64 @@ namespace TextureCompressor
                         return cacheTexture;
                     }
                 }
-                else if (!Texture.needsResize)
-                {
-                    return LoadDefaultTexture(Texture, mipmaps, makeNotReadable, compress);
-                }
                 else
                 {
-                    TextureCompressor.DBGLog("Texture " + originalTextureFile+ " does not exist!");
                     return RebuildCache(Texture, compress, mipmaps, makeNotReadable);
                 }
-            }
-            else if (!Texture.needsResize)
-            {
-                return LoadDefaultTexture(Texture, mipmaps, makeNotReadable, compress);
             }
             else
             {
                 return RebuildCache(Texture, compress, mipmaps, makeNotReadable);
             }
-        }
 
-        private static GameDatabase.TextureInfo LoadDefaultTexture(TexInfo Texture, bool mipmaps, bool makeNotReadable, bool compress)
-        {
-            String cacheConfigFile = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorCache/" + Texture.name + ".tcache";
-            GameDatabase.TextureInfo texInfo = TextureConverter.GetReadable(Texture, mipmaps);
-            String originalTextureFile = texInfo.texture.name;
-            texInfo.name = Texture.name;
-            texInfo.texture.name = Texture.name;
-            if (compress)
-            {
-                texInfo.texture.Compress(true);
-            }
-            texInfo.texture.Apply(mipmaps, makeNotReadable);
-            texInfo.isReadable = !makeNotReadable;
-            texInfo.isNormalMap = Texture.isNormalMap;
-            texInfo.isCompressed = compress;
-
-            String hashString = GetMD5String(originalTextureFile);
-
-            ConfigNode config = new ConfigNode();
-            config.AddValue("md5", hashString); TextureCompressor.DBGLog("md5: " + hashString);
-            config.AddValue("orig_format", Path.GetExtension(originalTextureFile)); TextureCompressor.DBGLog("orig_format: " + Path.GetExtension(originalTextureFile));
-            config.AddValue("orig_width", Texture.width.ToString()); TextureCompressor.DBGLog("orig_width: " + Texture.width.ToString());
-            config.AddValue("orig_height", Texture.height.ToString()); TextureCompressor.DBGLog("orig_height: " + Texture.height.ToString());
-            config.AddValue("is_normal", texInfo.isNormalMap.ToString()); TextureCompressor.DBGLog("is_normal: " + texInfo.isNormalMap.ToString());
-            config.AddValue("width", Texture.width.ToString()); TextureCompressor.DBGLog("width: " + Texture.width.ToString());
-            config.AddValue("height", Texture.height.ToString()); TextureCompressor.DBGLog("height: " + Texture.height.ToString());
-
-            config.Save(cacheConfigFile);
-            TextureCompressor.DBGLog("Saved Config.");
-
-            return texInfo;
         }
 
         private static GameDatabase.TextureInfo RebuildCache(TexInfo Texture, bool compress, bool mipmaps, bool makeNotReadable)
         {
-            TextureCompressor.DBGLog("Rebuilding Cache... " + Texture.name);
-            GameDatabase.TextureInfo cacheTexture;
-            
+            Texture.loadOriginalFirst = true;
             TextureCompressor.DBGLog("Loading texture...");
-            cacheTexture = TextureConverter.GetReadable(Texture, mipmaps);
+            TextureConverter.GetReadable(Texture, mipmaps);
             TextureCompressor.DBGLog("Texture loaded.");
 
+            GameDatabase.TextureInfo cacheTexture = Texture.texture;
             Texture2D tex = cacheTexture.texture;
 
             String textureName = cacheTexture.name;
             String cacheFile = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorCache/" + textureName;
-            TextureConverter.WriteTo(cacheTexture.texture, cacheFile+".pngcache");
+            if (Texture.needsResize)
+            {
+                TextureCompressor.DBGLog("Rebuilding Cache... " + Texture.name);
+
+                TextureCompressor.DBGLog("Saving cache file " + cacheFile + ".pngcache");
+                TextureConverter.WriteTo(cacheTexture.texture, cacheFile + ".pngcache");
+
+                String originalTextureFile = Texture.filename;
+                String cacheConfigFile = cacheFile + ".tcache";
+                TextureCompressor.DBGLog("Created Config for" + originalTextureFile);
+
+                String hashString = GetMD5String(originalTextureFile);
+
+                ConfigNode config = new ConfigNode();
+                config.AddValue("md5", hashString); TextureCompressor.DBGLog("md5: " + hashString);
+                config.AddValue("orig_format", Path.GetExtension(originalTextureFile)); TextureCompressor.DBGLog("orig_format: " + Path.GetExtension(originalTextureFile));
+                config.AddValue("orig_width", Texture.width.ToString()); TextureCompressor.DBGLog("orig_width: " + Texture.width.ToString());
+                config.AddValue("orig_height", Texture.height.ToString()); TextureCompressor.DBGLog("orig_height: " + Texture.height.ToString());
+                config.AddValue("is_normal", cacheTexture.isNormalMap.ToString()); TextureCompressor.DBGLog("is_normal: " + cacheTexture.isNormalMap.ToString());
+                config.AddValue("width", Texture.resizeWidth.ToString()); TextureCompressor.DBGLog("width: " + Texture.resizeWidth.ToString());
+                config.AddValue("height", Texture.resizeHeight.ToString()); TextureCompressor.DBGLog("height: " + Texture.resizeHeight.ToString());
+
+                config.Save(cacheConfigFile);
+                TextureCompressor.DBGLog("Saved Config.");
+            }
+            else
+            {
+                String directory = Path.GetDirectoryName(cacheFile + ".none");
+                if (File.Exists(directory))
+                {
+                    File.Delete(directory);
+                }
+                Directory.CreateDirectory(directory);
+            }
 
             if (compress)
             {
@@ -184,27 +172,7 @@ namespace TextureCompressor
                 tex.Apply(mipmaps, true);
             }
             cacheTexture.isReadable = !makeNotReadable;
-
-            String originalTextureFile = cacheTexture.texture.name;
-            cacheTexture.texture.name = cacheTexture.name;
-            String cacheConfigFile = cacheFile + ".tcache";
             
-            TextureCompressor.DBGLog("Created Config for" + originalTextureFile);
-
-            String hashString = GetMD5String(originalTextureFile);
-
-            ConfigNode config = new ConfigNode();
-            config.AddValue("md5", hashString); TextureCompressor.DBGLog("md5: " + hashString);
-            config.AddValue("orig_format", Path.GetExtension(originalTextureFile)); TextureCompressor.DBGLog("orig_format: " + Path.GetExtension(originalTextureFile));
-            config.AddValue("orig_width", Texture.width.ToString()); TextureCompressor.DBGLog("orig_width: " + Texture.width.ToString());
-            config.AddValue("orig_height", Texture.height.ToString()); TextureCompressor.DBGLog("orig_height: " + Texture.height.ToString());
-            config.AddValue("is_normal", cacheTexture.isNormalMap.ToString()); TextureCompressor.DBGLog("is_normal: " + cacheTexture.isNormalMap.ToString());
-            config.AddValue("width", Texture.resizeWidth.ToString()); TextureCompressor.DBGLog("width: " + Texture.resizeWidth.ToString());
-            config.AddValue("height", Texture.resizeHeight.ToString()); TextureCompressor.DBGLog("height: " + Texture.resizeHeight.ToString());
-            
-            config.Save(cacheConfigFile);
-            TextureCompressor.DBGLog("Saved Config.");
-
             return cacheTexture;
         }
 
@@ -232,7 +200,6 @@ namespace TextureCompressor
 
         public static int MemorySaved(int originalWidth, int originalHeight, TextureFormat originalFormat, bool originalMipmaps, GameDatabase.TextureInfo Texture)
         {
-            TextureCompressor.DBGLog("Texture replaced!");
             int width = Texture.texture.width;
             int height = Texture.texture.height;
             TextureFormat format = Texture.texture.format;

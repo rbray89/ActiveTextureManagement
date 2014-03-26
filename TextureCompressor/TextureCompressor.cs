@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,23 +16,15 @@ namespace TextureCompressor
         public int height;
         public int resizeWidth;
         public int resizeHeight;
-       
+        public string filename;
+        public GameDatabase.TextureInfo texture;
+
         public int scale;
         public int maxSize;
         public bool isNormalMap;
 
-        public bool needsCache;
-        public bool needsCacheUpdate;
+        public bool loadOriginalFirst;
         public bool needsResize;
-
-        public TexInfo(string name, int width, int height)
-        {
-            this.name = name;
-            this.isNormalMap = TextureCompressor.IsNormal(name);
-            this.width = width;
-            this.height = height;
-            needsCache = false;
-        }
 
         public TexInfo(string name)
         {
@@ -39,13 +32,20 @@ namespace TextureCompressor
             this.isNormalMap = TextureCompressor.IsNormal(name);
             this.width = 1;
             this.height = 1;
-            needsCache = true;
+            loadOriginalFirst = false;
+            needsResize = false;
         }
 
-        public void Resize(int scale, int maxSize)
+        public void SetScalingParams(int scale, int maxSize)
         {
             this.scale = scale;
             this.maxSize = maxSize;
+        }
+
+        public void Resize(int width, int height)
+        {
+            this.width = width;
+            this.height = height;
             this.Resize();
         }
 
@@ -117,36 +117,8 @@ namespace TextureCompressor
             if(HighLogic.LoadedScene == GameScenes.LOADING)
             {
                 PopulateConfig();
-                UrlDir.UrlConfig[] INTERNALS = GameDatabase.Instance.GetConfigs("TEXTURE_MANAGER");
-                UrlDir.UrlConfig node = INTERNALS[0];
-                {
-                    List<UrlDir.UrlFile> FilesToRemove = new List<UrlDir.UrlFile>();
-                    foreach (var file in node.parent.root.AllFiles)
-                    {
-                        if (file.fileType == UrlDir.FileType.Texture && foldersList.Exists(n => file.url.StartsWith(n)))
-                        {
-                            TexInfo t = CacheController.LoadCacheTextureInfo(file.url);
-                            if (t != null)
-                            {
-                                GameDatabase.TextureInfo Texture = UpdateTexture(t);
-                                GameDatabase.Instance.databaseTexture.Add(Texture);
-                                FilesToRemove.Add(file);
-                            }
-                            else 
-                            {
-                                t = new TexInfo(file.url);
-                                GameDatabase.TextureInfo Texture = UpdateTexture(t);
-                                GameDatabase.Instance.databaseTexture.Add(Texture);
-                                FilesToRemove.Add(file);
-                            }
-                        }
-                    }
-                    foreach (var file in FilesToRemove)
-                    {
-                        file.parent.files.Remove(file);
-                    }
-                    LastTextureIndex = GameDatabase.Instance.databaseTexture.Count -1;
-                }
+                LoadTextures();
+                
             }
             else if (HighLogic.LoadedScene == GameScenes.MAINMENU && !Compressed)
             {
@@ -176,6 +148,29 @@ namespace TextureCompressor
             }
         }
 
+        private void LoadTextures(){
+            UrlDir.UrlConfig[] INTERNALS = GameDatabase.Instance.GetConfigs("TEXTURE_MANAGER");
+            UrlDir.UrlConfig node = INTERNALS[0];
+            {
+                List<UrlDir.UrlFile> FilesToRemove = new List<UrlDir.UrlFile>();
+                foreach (var file in node.parent.root.AllFiles)
+                {
+                    if (file.fileType == UrlDir.FileType.Texture && foldersList.Exists(n => file.url.StartsWith(n)))
+                    {
+                        TexInfo t = new TexInfo(file.url);
+                        GameDatabase.TextureInfo Texture = UpdateTexture(t);
+                        GameDatabase.Instance.databaseTexture.Add(Texture);
+                        FilesToRemove.Add(file);
+                        Graphics.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture.texture);
+                    }
+                }
+                foreach (var file in FilesToRemove)
+                {
+                    file.parent.files.Remove(file);
+                }
+                LastTextureIndex = GameDatabase.Instance.databaseTexture.Count - 1;
+            }
+	    }
 
         private GUISkin _mySkin;
         private Rect _mainWindowRect = new Rect(5, 5, 640, 240);
@@ -253,7 +248,10 @@ namespace TextureCompressor
         protected void Update()
         {
             PopulateConfig();
-
+            if (!Compressed)
+            {
+                Log("GameDatabase.Instance.databaseTexture.Count: " + GameDatabase.Instance.databaseTexture.Count);
+            }
             if (!Compressed && GameDatabase.Instance.databaseTexture.Count > 0)
             {
                 int LocalLastTextureIndex = GameDatabase.Instance.databaseTexture.Count-1;
@@ -527,7 +525,7 @@ namespace TextureCompressor
                 }
             }
 
-            texture.Resize(scale, maxSize);
+            texture.SetScalingParams(scale, maxSize);
 
             GameDatabase.TextureInfo ret = CacheController.FetchCacheTexture(texture, compress, mipmaps, makeNotReadable && !readableList.Contains(texture.name));
             ret.texture.filterMode = filterMode;

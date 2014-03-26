@@ -183,10 +183,11 @@ namespace TextureCompressor
             return color;
         }
 
-        public static void MBMToTexture(string file, GameDatabase.TextureInfo texture, bool mipmaps, int newWidth, int newHeight)
+        public static void MBMToTexture(TexInfo Texture, bool mipmaps)
         {
+            GameDatabase.TextureInfo texture = Texture.texture;
             TextureConverter.InitImageBuffer();
-            FileStream mbmStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+            FileStream mbmStream = new FileStream(Texture.filename, FileMode.Open, FileAccess.Read);
             mbmStream.Position = 4;
 
             uint width = 0, height = 0;
@@ -257,25 +258,27 @@ namespace TextureCompressor
                 }
             }
 
-            
-            bool resize = tex.width != newWidth || tex.height != newHeight;
-
-            if (resize)
+            if (Texture.loadOriginalFirst)
             {
-                colors = TextureConverter.ResizePixels(colors, (int)width, (int)height, newWidth, newHeight);
-                width = (uint)newWidth;
-                height = (uint)newHeight;
+                Texture.Resize((int)width, (int)height);
+            }
+
+            if (Texture.needsResize)
+            {
+                colors = TextureConverter.ResizePixels(colors, (int)width, (int)height, Texture.resizeWidth, Texture.resizeHeight);
+                width = (uint)Texture.resizeWidth;
+                height = (uint)Texture.resizeHeight;
             }
             tex.Resize((int)width, (int)height, texformat, mipmaps);
             tex.SetPixels32(colors);
             tex.Apply(mipmaps, false);
         }
 
-        public static void IMGToTexture(string file, GameDatabase.TextureInfo texture, bool mipmaps, bool isNormalFormat, int width, int height)
+        public static void IMGToTexture(TexInfo Texture, bool mipmaps, bool isNormalFormat)
         {
-
+            GameDatabase.TextureInfo texture = Texture.texture;
             TextureConverter.InitImageBuffer();
-            FileStream imgStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+            FileStream imgStream = new FileStream(Texture.filename, FileMode.Open, FileAccess.Read);
             imgStream.Position = 0;
             imgStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
             imgStream.Close();
@@ -284,16 +287,18 @@ namespace TextureCompressor
             tex.LoadImage(imageBuffer);
             bool convertToNormalFormat = texture.isNormalMap && !isNormalFormat ? true : false;
             bool hasMipmaps = tex.mipmapCount == 1 ? false : true;
-            bool resize = tex.width != width || tex.height != height;
+            if(Texture.loadOriginalFirst)
+            {
+                Texture.Resize(tex.width, tex.height);
+            }
             TextureFormat format = tex.format;
             if(texture.isNormalMap)
             {
                 format = TextureFormat.ARGB32;
             }
-
-            if(resize)
+            if(Texture.needsResize)
             {
-                TextureConverter.Resize(texture, width, height, mipmaps, convertToNormalFormat);
+                TextureConverter.Resize(texture, Texture.resizeWidth, Texture.resizeHeight, mipmaps, convertToNormalFormat);
             }
             else if (convertToNormalFormat || hasMipmaps != mipmaps || format != tex.format)
             {
@@ -317,10 +322,11 @@ namespace TextureCompressor
             
         }
 
-        public static void TGAToTexture(string file, GameDatabase.TextureInfo texture, bool mipmaps, int newWidth, int newHeight)
+        public static void TGAToTexture(TexInfo Texture, bool mipmaps)
         {
+            GameDatabase.TextureInfo texture = Texture.texture;
             TextureConverter.InitImageBuffer();
-            FileStream tgaStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+            FileStream tgaStream = new FileStream(Texture.filename, FileMode.Open, FileAccess.Read);
             tgaStream.Position = 0;
             tgaStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
             tgaStream.Close();
@@ -328,6 +334,10 @@ namespace TextureCompressor
             byte imgType = imageBuffer[2];
             int width = imageBuffer[12] | (imageBuffer[13] << 8);
             int height = imageBuffer[14] | (imageBuffer[15] << 8);
+            if (Texture.loadOriginalFirst)
+            {
+                Texture.Resize(width, height);
+            }
             int depth = imageBuffer[16];
             bool alpha = depth == 32 ? true : false;
             TextureFormat texFormat = depth == 32 ? TextureFormat.RGBA32 : TextureFormat.RGB24;
@@ -428,21 +438,19 @@ namespace TextureCompressor
                 TextureCompressor.DBGLog("TGA format is not supported!");
             }
 
-            
-            bool resize = tex.width != newWidth || tex.height != newHeight;
 
-            if (resize)
+            if (Texture.needsResize)
             {
-                colors = TextureConverter.ResizePixels(colors, width, height, newWidth, newHeight);
-                width = newWidth;
-                height = newHeight;
+                colors = TextureConverter.ResizePixels(colors, width, height, Texture.resizeWidth, Texture.resizeHeight);
+                width = Texture.resizeWidth;
+                height = Texture.resizeHeight;
             }
             tex.Resize((int)width, (int)height, texFormat, mipmaps);
             tex.SetPixels32(colors);
             tex.Apply(mipmaps, false);
         }
 
-        public static GameDatabase.TextureInfo GetReadable(TexInfo Texture, bool mipmaps)
+        public static void GetReadable(TexInfo Texture, bool mipmaps)
         {
             String mbmPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".mbm";
             String pngPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".png";
@@ -462,32 +470,31 @@ namespace TextureCompressor
                 }
                 
                 GameDatabase.TextureInfo newTexture = new GameDatabase.TextureInfo(tex, Texture.isNormalMap, true, false);
+                Texture.texture = newTexture;
+                newTexture.name = Texture.name;
                 if (File.Exists(pngPath))
                 {
-                    IMGToTexture(pngPath, newTexture, mipmaps, false, Texture.resizeWidth, Texture.resizeHeight);
-                    tex.name = pngPath;
+                    Texture.filename = pngPath;
+                    IMGToTexture(Texture, mipmaps, false);
                 }
                 else if (File.Exists(jpgPath))
                 {
-                    IMGToTexture(jpgPath, newTexture, mipmaps, false, Texture.resizeWidth, Texture.resizeHeight);
-                    tex.name = jpgPath;
+                    Texture.filename = jpgPath;
+                    IMGToTexture(Texture, mipmaps, false);
                 }
                 else if (File.Exists(tgaPath))
                 {
-                    TGAToTexture(tgaPath, newTexture, mipmaps, Texture.resizeWidth, Texture.resizeHeight);
-                    tex.name = tgaPath;
+                    Texture.filename = tgaPath;
+                    TGAToTexture(Texture, mipmaps);
                 }
                 else if (File.Exists(mbmPath))
                 {
-                    MBMToTexture(mbmPath, newTexture, mipmaps, Texture.resizeWidth, Texture.resizeHeight);
-                    tex.name = mbmPath;
+                    Texture.filename = mbmPath;
+                    MBMToTexture(Texture, mipmaps);
+                   
                 }
-
-                newTexture.name = name;
-                
-                return newTexture;
+                tex.name = newTexture.name;
             }
-            return null;
         }
 
         internal static void WriteTo(Texture2D cacheTexture, string cacheFile)
