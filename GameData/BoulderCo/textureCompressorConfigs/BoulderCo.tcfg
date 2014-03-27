@@ -6,7 +6,7 @@ NORMAL_LIST
 
 OVERRIDES
 {
-	BoulderCo/Clouds/Textures/kerbin1
+	BoulderCo/Clouds/.*
 	{
 		compress = true
 		mipmaps = true
