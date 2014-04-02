@@ -7,8 +7,8 @@
     <ProjectGuid>{838C3D0D-94A2-4D2A-9DDE-0C0D551309AD}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>TextureCompressor</RootNamespace>
-    <AssemblyName>TextureCompressor</AssemblyName>
+    <RootNamespace>ActiveTextureManagement</RootNamespace>
+    <AssemblyName>ActiveTextureManagement</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -53,7 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CacheController.cs" />
-    <Compile Include="TextureCompressor.cs" />
+    <Compile Include="ActiveTextureManagement.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TextureConverter.cs" />
   </ItemGroup>

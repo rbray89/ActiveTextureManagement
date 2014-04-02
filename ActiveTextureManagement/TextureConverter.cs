@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
-namespace TextureCompressor
+namespace ActiveTextureManagement
 {
     class TextureConverter
     {
@@ -27,7 +27,7 @@ namespace TextureCompressor
 
         public static void Resize(GameDatabase.TextureInfo texture, int width, int height, bool mipmaps, bool convertToNormalFormat)
         {
-            TextureCompressor.DBGLog("Resizing...");
+            ActiveTextureManagement.DBGLog("Resizing...");
             Texture2D tex = texture.texture;
             TextureFormat format = tex.format;
             if (texture.isNormalMap)
@@ -435,7 +435,7 @@ namespace TextureCompressor
             }
             else
             {
-                TextureCompressor.DBGLog("TGA format is not supported!");
+                ActiveTextureManagement.DBGLog("TGA format is not supported!");
             }
 
 

@@ -7,7 +7,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
-namespace TextureCompressor
+namespace ActiveTextureManagement
 {
     public class TexInfo
     {
@@ -29,7 +29,7 @@ namespace TextureCompressor
         public TexInfo(string name)
         {
             this.name = name;
-            this.isNormalMap = TextureCompressor.IsNormal(name);
+            this.isNormalMap = ActiveTextureManagement.IsNormal(name);
             this.width = 1;
             this.height = 1;
             loadOriginalFirst = false;
@@ -82,7 +82,7 @@ namespace TextureCompressor
     }
 
     [KSPAddon(KSPAddon.Startup.EveryScene, false)]
-    public class TextureCompressor : MonoBehaviour
+    public class ActiveTextureManagement : MonoBehaviour
     {
         static bool Compressed = false;
         static int LastTextureIndex = -1;
@@ -170,6 +170,7 @@ namespace TextureCompressor
                 }
                 LastTextureIndex = GameDatabase.Instance.databaseTexture.Count - 1;
             }
+            
 	    }
 
         private GUISkin _mySkin;
@@ -352,7 +353,7 @@ namespace TextureCompressor
                 
                 if (System.IO.Directory.Exists(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs"))
                 {
-                    configfiles.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData", "*.tcfg", System.IO.SearchOption.AllDirectories));
+                    configfiles.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs", "*.tcfg", System.IO.SearchOption.AllDirectories));
                 }
 
                 overrides = config.GetNode("OVERRIDES");
@@ -468,16 +469,16 @@ namespace TextureCompressor
         static public GameDatabase.TextureInfo UpdateTexture(TexInfo texture)
         {
             string overrideName = overridesList.Find(n => texture.name.Length == Regex.Match(texture.name, n).Length);
-            bool mipmaps = TextureCompressor.config_mipmaps;
-            bool compress = TextureCompressor.config_compress;
-            int scale = TextureCompressor.config_scale;
-            int maxSize = TextureCompressor.config_max_size;
+            bool mipmaps = ActiveTextureManagement.config_mipmaps;
+            bool compress = ActiveTextureManagement.config_compress;
+            int scale = ActiveTextureManagement.config_scale;
+            int maxSize = ActiveTextureManagement.config_max_size;
             if (texture.isNormalMap)
             {
-                mipmaps = TextureCompressor.config_mipmaps_normals;
-                compress = TextureCompressor.config_compress_normals;
-                scale = TextureCompressor.config_scale_normals;
-                maxSize = TextureCompressor.config_max_size_normals;
+                mipmaps = ActiveTextureManagement.config_mipmaps_normals;
+                compress = ActiveTextureManagement.config_compress_normals;
+                scale = ActiveTextureManagement.config_scale_normals;
+                maxSize = ActiveTextureManagement.config_max_size_normals;
             }
             FilterMode filterMode = config_filter_mode;
             bool makeNotReadable = config_make_not_readable;

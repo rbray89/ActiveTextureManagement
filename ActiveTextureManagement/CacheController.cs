@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
 
-namespace TextureCompressor
+namespace ActiveTextureManagement
 {
 
     class CacheController
@@ -60,19 +60,19 @@ namespace TextureCompressor
                     {
                         if (cacheHash != hashString)
                         {
-                            TextureCompressor.DBGLog(cacheHash + " != " + hashString);
+                            ActiveTextureManagement.DBGLog(cacheHash + " != " + hashString);
                         }
                         if (cacheIsNorm != Texture.isNormalMap)
                         {
-                            TextureCompressor.DBGLog(cacheIsNorm + " != " + Texture.isNormalMap);
+                            ActiveTextureManagement.DBGLog(cacheIsNorm + " != " + Texture.isNormalMap);
                         }
                         if (Texture.resizeWidth != cacheWidth)
                         {
-                            TextureCompressor.DBGLog(Texture.resizeWidth + " != " + cacheWidth);
+                            ActiveTextureManagement.DBGLog(Texture.resizeWidth + " != " + cacheWidth);
                         }
                         if (Texture.resizeHeight != cacheHeight)
                         {
-                            TextureCompressor.DBGLog(Texture.resizeHeight + " != " + cacheHeight);
+                            ActiveTextureManagement.DBGLog(Texture.resizeHeight + " != " + cacheHeight);
                         }
                         return RebuildCache(Texture, compress, mipmaps, makeNotReadable);
                     }
@@ -82,7 +82,7 @@ namespace TextureCompressor
                     }
                     else
                     {
-                        TextureCompressor.DBGLog("Loading from cache... " + textureName);
+                        ActiveTextureManagement.DBGLog("Loading from cache... " + textureName);
                         Texture.needsResize = false;
                         Texture2D newTex = new Texture2D(4, 4);
                         GameDatabase.TextureInfo cacheTexture = new GameDatabase.TextureInfo(newTex, Texture.isNormalMap, !makeNotReadable, compress);
@@ -114,9 +114,9 @@ namespace TextureCompressor
         private static GameDatabase.TextureInfo RebuildCache(TexInfo Texture, bool compress, bool mipmaps, bool makeNotReadable)
         {
             Texture.loadOriginalFirst = true;
-            TextureCompressor.DBGLog("Loading texture...");
+            ActiveTextureManagement.DBGLog("Loading texture...");
             TextureConverter.GetReadable(Texture, mipmaps);
-            TextureCompressor.DBGLog("Texture loaded.");
+            ActiveTextureManagement.DBGLog("Texture loaded.");
 
             GameDatabase.TextureInfo cacheTexture = Texture.texture;
             Texture2D tex = cacheTexture.texture;
@@ -125,28 +125,28 @@ namespace TextureCompressor
             String cacheFile = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorCache/" + textureName;
             if (Texture.needsResize)
             {
-                TextureCompressor.DBGLog("Rebuilding Cache... " + Texture.name);
+                ActiveTextureManagement.DBGLog("Rebuilding Cache... " + Texture.name);
 
-                TextureCompressor.DBGLog("Saving cache file " + cacheFile + ".pngcache");
+                ActiveTextureManagement.DBGLog("Saving cache file " + cacheFile + ".pngcache");
                 TextureConverter.WriteTo(cacheTexture.texture, cacheFile + ".pngcache");
 
                 String originalTextureFile = Texture.filename;
                 String cacheConfigFile = cacheFile + ".tcache";
-                TextureCompressor.DBGLog("Created Config for" + originalTextureFile);
+                ActiveTextureManagement.DBGLog("Created Config for" + originalTextureFile);
 
                 String hashString = GetMD5String(originalTextureFile);
 
                 ConfigNode config = new ConfigNode();
-                config.AddValue("md5", hashString); TextureCompressor.DBGLog("md5: " + hashString);
-                config.AddValue("orig_format", Path.GetExtension(originalTextureFile)); TextureCompressor.DBGLog("orig_format: " + Path.GetExtension(originalTextureFile));
-                config.AddValue("orig_width", Texture.width.ToString()); TextureCompressor.DBGLog("orig_width: " + Texture.width.ToString());
-                config.AddValue("orig_height", Texture.height.ToString()); TextureCompressor.DBGLog("orig_height: " + Texture.height.ToString());
-                config.AddValue("is_normal", cacheTexture.isNormalMap.ToString()); TextureCompressor.DBGLog("is_normal: " + cacheTexture.isNormalMap.ToString());
-                config.AddValue("width", Texture.resizeWidth.ToString()); TextureCompressor.DBGLog("width: " + Texture.resizeWidth.ToString());
-                config.AddValue("height", Texture.resizeHeight.ToString()); TextureCompressor.DBGLog("height: " + Texture.resizeHeight.ToString());
+                config.AddValue("md5", hashString); ActiveTextureManagement.DBGLog("md5: " + hashString);
+                config.AddValue("orig_format", Path.GetExtension(originalTextureFile)); ActiveTextureManagement.DBGLog("orig_format: " + Path.GetExtension(originalTextureFile));
+                config.AddValue("orig_width", Texture.width.ToString()); ActiveTextureManagement.DBGLog("orig_width: " + Texture.width.ToString());
+                config.AddValue("orig_height", Texture.height.ToString()); ActiveTextureManagement.DBGLog("orig_height: " + Texture.height.ToString());
+                config.AddValue("is_normal", cacheTexture.isNormalMap.ToString()); ActiveTextureManagement.DBGLog("is_normal: " + cacheTexture.isNormalMap.ToString());
+                config.AddValue("width", Texture.resizeWidth.ToString()); ActiveTextureManagement.DBGLog("width: " + Texture.resizeWidth.ToString());
+                config.AddValue("height", Texture.resizeHeight.ToString()); ActiveTextureManagement.DBGLog("height: " + Texture.resizeHeight.ToString());
 
                 config.Save(cacheConfigFile);
-                TextureCompressor.DBGLog("Saved Config.");
+                ActiveTextureManagement.DBGLog("Saved Config.");
             }
             else
             {
@@ -204,23 +204,23 @@ namespace TextureCompressor
             int height = Texture.texture.height;
             TextureFormat format = Texture.texture.format;
             bool mipmaps = Texture.texture.mipmapCount == 1 ? false : true;
-            TextureCompressor.DBGLog("Texture: " + Texture.name);
-            TextureCompressor.DBGLog("is normalmap: " + Texture.isNormalMap);
+            ActiveTextureManagement.DBGLog("Texture: " + Texture.name);
+            ActiveTextureManagement.DBGLog("is normalmap: " + Texture.isNormalMap);
             Texture2D tex = Texture.texture;
-            TextureCompressor.DBGLog("originalWidth: " + originalWidth);
-            TextureCompressor.DBGLog("originalHeight: " + originalHeight);
-            TextureCompressor.DBGLog("originalFormat: " + originalFormat);
-            TextureCompressor.DBGLog("originalMipmaps: " + originalMipmaps);
-            TextureCompressor.DBGLog("width: " + width);
-            TextureCompressor.DBGLog("height: " + height);
-            TextureCompressor.DBGLog("format: " + format);
-            TextureCompressor.DBGLog("mipmaps: " + mipmaps);
+            ActiveTextureManagement.DBGLog("originalWidth: " + originalWidth);
+            ActiveTextureManagement.DBGLog("originalHeight: " + originalHeight);
+            ActiveTextureManagement.DBGLog("originalFormat: " + originalFormat);
+            ActiveTextureManagement.DBGLog("originalMipmaps: " + originalMipmaps);
+            ActiveTextureManagement.DBGLog("width: " + width);
+            ActiveTextureManagement.DBGLog("height: " + height);
+            ActiveTextureManagement.DBGLog("format: " + format);
+            ActiveTextureManagement.DBGLog("mipmaps: " + mipmaps);
             bool readable = true;
             try { tex.GetPixel(0, 0); }
             catch { readable = false; };
-            TextureCompressor.DBGLog("readable: " + readable);
+            ActiveTextureManagement.DBGLog("readable: " + readable);
             if (readable != Texture.isReadable)
-            { TextureCompressor.DBGLog("Readbility does not match!"); }
+            { ActiveTextureManagement.DBGLog("Readbility does not match!"); }
             int oldSize = 0;
             int newSize = 0;
             switch (originalFormat)
