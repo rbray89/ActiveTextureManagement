@@ -341,21 +341,13 @@ namespace ActiveTextureManagement
         {
             if (config == null)
             {
-                String configString = KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressor.cfg";
-                config = ConfigNode.Load(configString).GetNode("TEXTURE_MANAGER");
+                config = GameDatabase.Instance.GetConfigs("ACTIVE_TEXTURE_MANAGER")[0].config;
                 String dbg = config.GetValue("DBG");
                 if(dbg != null)
                 {
                     DBL_LOG = true;
                 }
                 
-                List<String> configfiles = new List<string>();
-                
-                if (System.IO.Directory.Exists(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs"))
-                {
-                    configfiles.AddRange(System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs", "*.tcfg", System.IO.SearchOption.AllDirectories));
-                }
-
                 overrides = config.GetNode("OVERRIDES");
                 ConfigNode folders = config.GetNode("FOLDERS");
                 ConfigNode normals = config.GetNode("NORMAL_LIST");
@@ -372,14 +364,12 @@ namespace ActiveTextureManagement
                 {
                     normals = new ConfigNode("NORMAL_LIST");
                 }
-                String pathStart = (KSPUtil.ApplicationRootPath + "GameData/BoulderCo/textureCompressorConfigs/").Replace('\\', '/');
-                foreach(String configFile in configfiles)
+
+                foreach (UrlDir.UrlConfig urlConfig in GameDatabase.Instance.GetConfigs("ACTIVE_TEXTURE_MANAGER_CONFIG"))
                 {
-                    
-                    String unixConfigFile = configFile.Replace('\\', '/');
-                    String folder = unixConfigFile.Replace(pathStart, "").Replace(".tcfg","");
-                    ConfigNode configFolder = ConfigNode.Load(unixConfigFile);
-                    String enabledString = configFolder.GetValue("config_enabled");
+                    ConfigNode configFolder = urlConfig.config;
+                    String enabledString = configFolder.GetValue("enabled");
+                    String folder = configFolder.GetValue("folder");
                     bool isEnabled = false;
                     if ( enabledString != null)
                     {

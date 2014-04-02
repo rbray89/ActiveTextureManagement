@@ -1,8 +1,0 @@
-config_enabled = true
-NORMAL_LIST
-{
-	texture = Squad/Spaces/mk1CockpitInternal/model002
-	texture = Squad/Spaces/mk1CockpitInternal/model004
-	texture = Squad/Parts/FuelTank/RCSTank1-2/model001
-	texture = Squad/Parts/Aero/winglet2/model001
-}
