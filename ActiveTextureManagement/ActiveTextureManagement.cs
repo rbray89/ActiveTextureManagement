@@ -221,11 +221,7 @@ namespace ActiveTextureManagement
             GUI.EndScrollView();
 
             String folder = folderList[selectedFolder];
-            if( folder != "UNMANAGED" && (OldSelectedFolder != selectedFolder || guiConfig == null))
-            {
-                String config = System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData", "*"+folder + ".tcfg", System.IO.SearchOption.AllDirectories)[0];
-                guiConfig = ConfigNode.Load(config);
-            }
+            
 
             String memFormatString = "{0,7}kB {1,4}MB";
             long bSaved = folderBytesSaved[folderList[selectedFolder]];
