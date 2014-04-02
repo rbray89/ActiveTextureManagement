@@ -543,12 +543,12 @@ namespace ActiveTextureManagement
         {
             if (DBL_LOG)
             {
-                UnityEngine.Debug.Log("TextureCompressor: " + message);
+                UnityEngine.Debug.Log("ActiveTextureManagement: " + message);
             }
         }
         public static void Log(String message)
         {
-            UnityEngine.Debug.Log("TextureCompressor: " + message);
+            UnityEngine.Debug.Log("ActiveTextureManagement: " + message);
         }
 
     }

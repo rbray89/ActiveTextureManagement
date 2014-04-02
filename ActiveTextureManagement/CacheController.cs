@@ -18,7 +18,7 @@ namespace ActiveTextureManagement
         {
             String textureName = Texture.name;
             String originalTextureFile = KSPUtil.ApplicationRootPath + "GameData/" + textureName;
-            String cacheFile = KSPUtil.ApplicationRootPath + "GameData/ActiveTextureManagement/textureCompressorCache/" + textureName;
+            String cacheFile = KSPUtil.ApplicationRootPath + "GameData/ActiveTextureManagement/textureCache/" + textureName;
             String cacheConfigFile = cacheFile + ".tcache";
             cacheFile += ".pngcache";
             if (File.Exists(cacheConfigFile))
@@ -122,7 +122,7 @@ namespace ActiveTextureManagement
             Texture2D tex = cacheTexture.texture;
 
             String textureName = cacheTexture.name;
-            String cacheFile = KSPUtil.ApplicationRootPath + "GameData/ActiveTextureManagement/textureCompressorCache/" + textureName;
+            String cacheFile = KSPUtil.ApplicationRootPath + "GameData/ActiveTextureManagement/textureCache/" + textureName;
             if (Texture.needsResize)
             {
                 ActiveTextureManagement.DBGLog("Rebuilding Cache... " + Texture.name);
