@@ -149,7 +149,7 @@ namespace ActiveTextureManagement
         }
 
         private void LoadTextures(){
-            UrlDir.UrlConfig[] INTERNALS = GameDatabase.Instance.GetConfigs("TEXTURE_MANAGER");
+            UrlDir.UrlConfig[] INTERNALS = GameDatabase.Instance.GetConfigs("ACTIVE_TEXTURE_MANAGER");
             UrlDir.UrlConfig node = INTERNALS[0];
             {
                 List<UrlDir.UrlFile> FilesToRemove = new List<UrlDir.UrlFile>();
