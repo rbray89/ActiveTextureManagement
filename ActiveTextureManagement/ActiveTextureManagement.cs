@@ -245,10 +245,6 @@ namespace ActiveTextureManagement
         protected void Update()
         {
             PopulateConfig();
-            if (!Compressed)
-            {
-                Log("GameDatabase.Instance.databaseTexture.Count: " + GameDatabase.Instance.databaseTexture.Count);
-            }
             if (!Compressed && GameDatabase.Instance.databaseTexture.Count > 0)
             {
                 int LocalLastTextureIndex = GameDatabase.Instance.databaseTexture.Count-1;
@@ -337,7 +333,7 @@ namespace ActiveTextureManagement
         {
             if (config == null)
             {
-                config = GameDatabase.Instance.GetConfigs("ACTIVE_TEXTURE_MANAGER")[0].config;
+                config = GameDatabase.Instance.GetConfigNodes("ACTIVE_TEXTURE_MANAGER")[0];
                 String dbg = config.GetValue("DBG");
                 if(dbg != null)
                 {
@@ -361,9 +357,8 @@ namespace ActiveTextureManagement
                     normals = new ConfigNode("NORMAL_LIST");
                 }
 
-                foreach (UrlDir.UrlConfig urlConfig in GameDatabase.Instance.GetConfigs("ACTIVE_TEXTURE_MANAGER_CONFIG"))
+                foreach (ConfigNode configFolder in GameDatabase.Instance.GetConfigNodes("ACTIVE_TEXTURE_MANAGER_CONFIG"))
                 {
-                    ConfigNode configFolder = urlConfig.config;
                     String enabledString = configFolder.GetValue("enabled");
                     String folder = configFolder.GetValue("folder");
                     bool isEnabled = false;
@@ -371,6 +366,8 @@ namespace ActiveTextureManagement
                     {
                         bool.TryParse(enabledString, out isEnabled);
                     }
+                    DBGLog("folder: " + folder);
+                    DBGLog("enabled: " + isEnabled);
                     if (isEnabled)
                     {
                         folders.AddValue("folder", folder);
