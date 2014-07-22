@@ -113,8 +113,6 @@ namespace ActiveTextureManagement
 
         private static GameDatabase.TextureInfo RebuildCache(TexInfo Texture, bool compress, bool mipmaps, bool makeNotReadable)
         {
-            ActiveTextureManagement.Log("Texture");
-            ActiveTextureManagement.Log(Texture.name);
             Texture.loadOriginalFirst = true;
             ActiveTextureManagement.DBGLog("Loading texture...");
             TextureConverter.GetReadable(Texture, mipmaps);
