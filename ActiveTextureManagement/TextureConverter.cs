@@ -454,9 +454,10 @@ namespace ActiveTextureManagement
         {
             String mbmPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".mbm";
             String pngPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".png";
+            String pngPathTruecolor = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".truecolor";
             String jpgPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".jpg";
             String tgaPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".tga";
-            if (File.Exists(pngPath) || File.Exists(jpgPath) || File.Exists(tgaPath) || File.Exists(mbmPath))
+            if (File.Exists(pngPath) || File.Exists(pngPathTruecolor) || File.Exists(jpgPath) || File.Exists(tgaPath) || File.Exists(mbmPath))
             {
                 Texture2D tex = new Texture2D(2, 2);
                 String name;
@@ -475,6 +476,11 @@ namespace ActiveTextureManagement
                 if (File.Exists(pngPath))
                 {
                     Texture.filename = pngPath;
+                    IMGToTexture(Texture, mipmaps, false);
+                }
+                else if (File.Exists(pngPathTruecolor))
+                {
+                    Texture.filename = pngPathTruecolor;
                     IMGToTexture(Texture, mipmaps, false);
                 }
                 else if (File.Exists(jpgPath))
