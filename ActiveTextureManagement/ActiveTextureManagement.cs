@@ -452,6 +452,11 @@ namespace ActiveTextureManagement
         static public GameDatabase.TextureInfo UpdateTexture(TexInfo texture)
         {
             string overrideName = overridesList.Find(n => texture.name.Length == Regex.Match(texture.name, n).Length);
+            foreach(String ride in overridesList)
+            {
+                Log(ride + ": " + Regex.Match(texture.name, ride).Success);
+            }
+            Log(texture.name+": "+overrideName);
             bool mipmaps = ActiveTextureManagement.config_mipmaps;
             bool compress = ActiveTextureManagement.config_compress;
             int scale = ActiveTextureManagement.config_scale;
