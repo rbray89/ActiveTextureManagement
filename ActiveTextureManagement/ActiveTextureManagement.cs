@@ -112,13 +112,15 @@ namespace ActiveTextureManagement
         static FilterMode config_filter_mode = FilterMode.Bilinear;
         static bool config_make_not_readable = false;
 
+  
+
         protected void Awake()
         {
-            if(HighLogic.LoadedScene == GameScenes.LOADING)
+            if (HighLogic.LoadedScene == GameScenes.LOADING)
             {
                 PopulateConfig();
-                LoadTextures();
-                
+                //LoadTextures();
+                //Compressed = true;
             }
             else if (HighLogic.LoadedScene == GameScenes.MAINMENU && !Compressed)
             {
@@ -153,7 +155,7 @@ namespace ActiveTextureManagement
             UrlDir.UrlConfig node = INTERNALS[0];
             {
                 List<UrlDir.UrlFile> FilesToRemove = new List<UrlDir.UrlFile>();
-                foreach (var file in node.parent.root.AllFiles)
+                foreach (var file in GameDatabase.Instance.root.AllFiles)
                 {
                     if (fileIsTexture(file) && foldersList.Exists(n => file.url.StartsWith(n)))
                     {
@@ -161,7 +163,7 @@ namespace ActiveTextureManagement
                         GameDatabase.TextureInfo Texture = UpdateTexture(t);
                         GameDatabase.Instance.databaseTexture.Add(Texture);
                         FilesToRemove.Add(file);
-                        Graphics.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture.texture);
+                        
                     }
                 }
                 foreach (var file in FilesToRemove)
@@ -201,6 +203,7 @@ namespace ActiveTextureManagement
                 long mbSaved = (long)(kbSaved / 1024f);
                 String totalMemoryString = String.Format("Total Memory Saved: " + memFormatString, kbSaved, mbSaved);
                 _mainWindowRect = GUI.Window(0x8100, _mainWindowRect, DrawMainWindow, totalMemoryString);
+                
             }
         }
 
@@ -253,8 +256,7 @@ namespace ActiveTextureManagement
 
         protected void Update()
         {
-            PopulateConfig();
-            if (!Compressed && GameDatabase.Instance.databaseTexture.Count > 0)
+            if ( LastTextureIndex <= GameDatabase.Instance.databaseTexture.Count - 1)
             {
                 int LocalLastTextureIndex = GameDatabase.Instance.databaseTexture.Count-1;
                 if (LastTextureIndex != LocalLastTextureIndex)
@@ -263,22 +265,15 @@ namespace ActiveTextureManagement
                     {
                         GameDatabase.TextureInfo Texture = GameDatabase.Instance.databaseTexture[i];
                         LastTextureIndex = i;
-                        
-                        int originalWidth = Texture.texture.width;
-                        int originalHeight = Texture.texture.height;
-                        TextureFormat originalFormat = Texture.texture.format;
-                        bool originalMipmaps = Texture.texture.mipmapCount == 1 ? false : true;
-                        String folder = "UNMANAGED";
-                        if (config_compress)
-                        {
-                            tryCompress(Texture);
-                        }
-                        if (!foldersExList.Contains(folder))
-                        {
-                            foldersExList.Add(folder);
-                        }
-                        updateMemoryCount(originalWidth, originalHeight, originalFormat, originalMipmaps, Texture, folder);
+                        int width = Texture.texture.width;
+                        int height = Texture.texture.height;
+                        TextureFormat format = Texture.texture.format;
+                        bool mipmaps = Texture.texture.mipmapCount != 0;
+                        TexInfo t = new TexInfo(Texture.name);
+                        GameDatabase.TextureInfo texture = UpdateTexture(t);
+                        GameDatabase.Instance.ReplaceTexture(Texture.name, texture);
                         gcCount++;
+                        updateMemoryCount(width, height, format, mipmaps, texture, "");
                     }
                     if (gcCount > GC_COUNT_TRIGGER)
                     {
