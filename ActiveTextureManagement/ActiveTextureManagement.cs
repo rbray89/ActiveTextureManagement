@@ -102,6 +102,7 @@ namespace ActiveTextureManagement
         {
             if (HighLogic.LoadedScene == GameScenes.LOADING)
             {
+                DatabaseLoaderTexture_ATM.PopulateConfig();
                 SetupLoaders();
             }
             else if (HighLogic.LoadedScene == GameScenes.MAINMENU && !Compressed)

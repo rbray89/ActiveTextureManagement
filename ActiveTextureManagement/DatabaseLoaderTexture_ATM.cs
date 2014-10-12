@@ -34,12 +34,8 @@ namespace ActiveTextureManagement
         static FilterMode config_filter_mode = FilterMode.Bilinear;
         static bool config_make_not_readable = false;
 
-        static DatabaseLoaderTexture_ATM()
-        {
-            PopulateConfig();
-        }
 
-        static void PopulateConfig()
+        public static void PopulateConfig()
         {
             if (config == null)
             {
