@@ -155,7 +155,7 @@ namespace ActiveTextureManagement
                 List<UrlDir.UrlFile> FilesToRemove = new List<UrlDir.UrlFile>();
                 foreach (var file in node.parent.root.AllFiles)
                 {
-                    if (file.fileType == UrlDir.FileType.Texture && foldersList.Exists(n => file.url.StartsWith(n)))
+                    if (fileIsTexture(file) && foldersList.Exists(n => file.url.StartsWith(n)))
                     {
                         TexInfo t = new TexInfo(file.url);
                         GameDatabase.TextureInfo Texture = UpdateTexture(t);
@@ -172,6 +172,15 @@ namespace ActiveTextureManagement
             }
             
 	    }
+
+        private bool fileIsTexture(UrlDir.UrlFile file)
+        {
+            return file.fileExtension == "mbm" ||
+                file.fileExtension == "png" || 
+                file.fileExtension == "truecolor" || 
+                file.fileExtension == "jpg" || 
+                file.fileExtension == "tga";
+        }
 
         private GUISkin _mySkin;
         private Rect _mainWindowRect = new Rect(5, 5, 640, 240);
