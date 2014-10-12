@@ -89,6 +89,7 @@ namespace ActiveTextureManagement
         static int gcCount = 0;
         static long memorySaved = 0;
         static bool DBL_LOG = false;
+        static bool loadedTexturesCache = false;
         
         const int GC_COUNT_TRIGGER = 20;
         
@@ -114,13 +115,7 @@ namespace ActiveTextureManagement
 
         protected void Awake()
         {
-            if(HighLogic.LoadedScene == GameScenes.LOADING)
-            {
-                PopulateConfig();
-                LoadTextures();
-                
-            }
-            else if (HighLogic.LoadedScene == GameScenes.MAINMENU && !Compressed)
+            if (HighLogic.LoadedScene == GameScenes.MAINMENU && !Compressed)
             {
                 Update();
                 Compressed = true;
@@ -148,12 +143,18 @@ namespace ActiveTextureManagement
             }
         }
 
-        private void LoadTextures(){
-            UrlDir.UrlConfig[] INTERNALS = GameDatabase.Instance.GetConfigs("ACTIVE_TEXTURE_MANAGER");
-            UrlDir.UrlConfig node = INTERNALS[0];
+        private void LoadTextures()
+        {
+            if (loadedTexturesCache)
+                return;
+
+            int count = GameDatabase.Instance.root.AllFiles.Count(file => file.fileType == UrlDir.FileType.Texture);
+            if (count == 0)
+                return;
+
             {
                 List<UrlDir.UrlFile> FilesToRemove = new List<UrlDir.UrlFile>();
-                foreach (var file in node.parent.root.AllFiles)
+                foreach (var file in GameDatabase.Instance.root.AllFiles)
                 {
                     if (fileIsTexture(file) && foldersList.Exists(n => file.url.StartsWith(n)))
                     {
@@ -170,8 +171,8 @@ namespace ActiveTextureManagement
                 }
                 LastTextureIndex = GameDatabase.Instance.databaseTexture.Count - 1;
             }
-            
-	    }
+            loadedTexturesCache = true;
+        }
 
         private bool fileIsTexture(UrlDir.UrlFile file)
         {
@@ -254,6 +255,9 @@ namespace ActiveTextureManagement
         protected void Update()
         {
             PopulateConfig();
+            
+            LoadTextures();
+
             if (!Compressed && GameDatabase.Instance.databaseTexture.Count > 0)
             {
                 int LocalLastTextureIndex = GameDatabase.Instance.databaseTexture.Count-1;
