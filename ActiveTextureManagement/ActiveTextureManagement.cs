@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
@@ -29,7 +30,7 @@ namespace ActiveTextureManagement
         public TexInfo(string name)
         {
             this.name = name;
-            this.isNormalMap = ActiveTextureManagement.IsNormal(name);
+            this.isNormalMap = DatabaseLoaderTexture_ATM.IsNormal(name);
             this.width = 1;
             this.height = 1;
             loadOriginalFirst = false;
@@ -88,39 +89,20 @@ namespace ActiveTextureManagement
         static int LastTextureIndex = -1;
         static int gcCount = 0;
         static long memorySaved = 0;
-        static bool DBL_LOG = false;
+        public static bool DBL_LOG = false;
         
         const int GC_COUNT_TRIGGER = 20;
         
-        static ConfigNode config;
-        static ConfigNode overrides;
-        static List<String> overridesList = new List<string>();
-        static List<String> foldersList = new List<string>();
-        static List<String> readableList = new List<string>();
-        static List<String> normalList = new List<string>();
-        static List<String> foldersExList = new List<string>();
+        
         static Dictionary<String, long> folderBytesSaved = new Dictionary<string, long>();
 
-        static bool config_mipmaps = false;
-        static bool config_compress = true;
-        static int config_scale = 1;
-        static int config_max_size = 1;
-        static bool config_mipmaps_normals = false;
-        static bool config_compress_normals = true;
-        static int config_scale_normals = 1;
-        static int config_max_size_normals = 1;
-        static FilterMode config_filter_mode = FilterMode.Bilinear;
-        static bool config_make_not_readable = false;
+        static List<String> foldersExList = new List<string>();
 
-  
-
-        protected void Awake()
+        protected void Start()
         {
             if (HighLogic.LoadedScene == GameScenes.LOADING)
             {
-                PopulateConfig();
-                //LoadTextures();
-                //Compressed = true;
+                SetupLoaders();
             }
             else if (HighLogic.LoadedScene == GameScenes.MAINMENU && !Compressed)
             {
@@ -150,38 +132,24 @@ namespace ActiveTextureManagement
             }
         }
 
-        private void LoadTextures(){
-            UrlDir.UrlConfig[] INTERNALS = GameDatabase.Instance.GetConfigs("ACTIVE_TEXTURE_MANAGER");
-            UrlDir.UrlConfig node = INTERNALS[0];
-            {
-                List<UrlDir.UrlFile> FilesToRemove = new List<UrlDir.UrlFile>();
-                foreach (var file in GameDatabase.Instance.root.AllFiles)
-                {
-                    if (fileIsTexture(file) && foldersList.Exists(n => file.url.StartsWith(n)))
-                    {
-                        TexInfo t = new TexInfo(file.url);
-                        GameDatabase.TextureInfo Texture = UpdateTexture(t);
-                        GameDatabase.Instance.databaseTexture.Add(Texture);
-                        FilesToRemove.Add(file);
-                        
-                    }
-                }
-                foreach (var file in FilesToRemove)
-                {
-                    file.parent.files.Remove(file);
-                }
-                LastTextureIndex = GameDatabase.Instance.databaseTexture.Count - 1;
-            }
-            
-	    }
-
-        private bool fileIsTexture(UrlDir.UrlFile file)
+        private void SetupLoaders()
         {
-            return file.fileExtension == "mbm" ||
-                file.fileExtension == "png" || 
-                file.fileExtension == "truecolor" || 
-                file.fileExtension == "jpg" || 
-                file.fileExtension == "tga";
+
+            // Get the list where the Texture DatabaseLoader are stored
+            Type gdType = typeof(GameDatabase);
+            List<DatabaseLoader<GameDatabase.TextureInfo>> textureLoaders =
+                (from fld in gdType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                 where fld.FieldType == typeof(List<DatabaseLoader<GameDatabase.TextureInfo>>)
+                 select (List<DatabaseLoader<GameDatabase.TextureInfo>>)fld.GetValue(GameDatabase.Instance)).FirstOrDefault();
+
+            foreach (var textureLoader in textureLoaders)
+            {
+                if (textureLoader.GetType().Name != "DatabaseLoaderTexture_ATM")
+                {
+                    Log("Disabling " + textureLoader.GetType().Name);
+                    textureLoader.extensions.Clear();
+                }
+            }
         }
 
         private GUISkin _mySkin;
@@ -256,34 +224,7 @@ namespace ActiveTextureManagement
 
         protected void Update()
         {
-            if ( LastTextureIndex <= GameDatabase.Instance.databaseTexture.Count - 1)
-            {
-                int LocalLastTextureIndex = GameDatabase.Instance.databaseTexture.Count-1;
-                if (LastTextureIndex != LocalLastTextureIndex)
-                {
-                    for (int i = LastTextureIndex + 1; i < GameDatabase.Instance.databaseTexture.Count; i++)
-                    {
-                        GameDatabase.TextureInfo Texture = GameDatabase.Instance.databaseTexture[i];
-                        LastTextureIndex = i;
-                        int width = Texture.texture.width;
-                        int height = Texture.texture.height;
-                        TextureFormat format = Texture.texture.format;
-                        bool mipmaps = Texture.texture.mipmapCount != 0;
-                        TexInfo t = new TexInfo(Texture.name);
-                        GameDatabase.TextureInfo texture = UpdateTexture(t);
-                        GameDatabase.Instance.ReplaceTexture(Texture.name, texture);
-                        gcCount++;
-                        updateMemoryCount(width, height, format, mipmaps, texture, "");
-                    }
-                    if (gcCount > GC_COUNT_TRIGGER)
-                    {
-                        System.GC.Collect();
-                        gcCount = 0;
-                    }
-                }
-                
-            }
-            else if (HighLogic.LoadedScene == GameScenes.MAINMENU)
+            if (HighLogic.LoadedScene == GameScenes.MAINMENU)
             {
                 bool alt = (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt));
                 if (alt && Input.GetKeyDown(KeyCode.M))
@@ -293,233 +234,7 @@ namespace ActiveTextureManagement
             }
         }
 
-        public static bool IsNormal(String name)
-        {
-            bool isNormal = name.EndsWith("_NRM") || normalList.Contains(name);
-            String originalTextureFile = KSPUtil.ApplicationRootPath + "GameData/" + name + ".mbm";
-            if (!isNormal && File.Exists(originalTextureFile))
-            {
-                FileStream stream = File.OpenRead(originalTextureFile);
-                //while stream is open, if it is an MBM, flag normal maps.
-                stream.Position = 12;
-                if (stream.ReadByte() == 1)
-                {
-                    isNormal = true;
-                }
-                stream.Close();
-            }
-            return isNormal;
-        }
-
-        private static void SetNormalMap(GameDatabase.TextureInfo Texture)
-        {
-            Texture.isNormalMap = IsNormal(Texture.name);
-        }
-
-        private void tryCompress(GameDatabase.TextureInfo Texture)
-        {
-            Texture2D tex = Texture.texture;
-            if (tex.format != TextureFormat.DXT1 && tex.format != TextureFormat.DXT5)
-            {
-                try { 
-                    tex.GetPixel(0, 0);
-                    tex.Compress(true);
-                    Texture.isCompressed = true;
-                    Texture.isReadable = true;
-                }
-                catch {
-                    Texture.isReadable = false;
-                }
-            }
-        }
-
-        private void PopulateConfig()
-        {
-            if (config == null)
-            {
-                config = GameDatabase.Instance.GetConfigNodes("ACTIVE_TEXTURE_MANAGER")[0];
-                String dbg = config.GetValue("DBG");
-                if(dbg != null)
-                {
-                    DBL_LOG = true;
-                }
-                
-                overrides = config.GetNode("OVERRIDES");
-                ConfigNode folders = config.GetNode("FOLDERS");
-                ConfigNode normals = config.GetNode("NORMAL_LIST");
-
-                if(overrides == null)
-                {
-                    overrides = new ConfigNode("OVERRIDES");
-                }
-                if(folders == null)
-                {
-                    folders = new ConfigNode("FOLDERS");
-                }
-                if (normals == null)
-                {
-                    normals = new ConfigNode("NORMAL_LIST");
-                }
-
-                foreach (ConfigNode configFolder in GameDatabase.Instance.GetConfigNodes("ACTIVE_TEXTURE_MANAGER_CONFIG"))
-                {
-                    String enabledString = configFolder.GetValue("enabled");
-                    String folder = configFolder.GetValue("folder");
-                    bool isEnabled = false;
-                    if ( enabledString != null)
-                    {
-                        bool.TryParse(enabledString, out isEnabled);
-                    }
-                    DBGLog("folder: " + folder);
-                    DBGLog("enabled: " + isEnabled);
-                    if (isEnabled)
-                    {
-                        folders.AddValue("folder", folder);
-                        ConfigNode modOverrides = configFolder.GetNode("OVERRIDES");
-                        ConfigNode modNormals = configFolder.GetNode("NORMAL_LIST");
-                        CopyConfigNode(modOverrides, overrides);
-                        CopyConfigNode(modNormals, normals);
-                    }
-                }
-
-                foreach (ConfigNode node in overrides.nodes)
-                {
-                    overridesList.Add(node.name);
-                }
-                foreach (ConfigNode.Value folder in folders.values)
-                {
-                    foldersList.Add(folder.value);
-                }
-                foreach (ConfigNode.Value texture in normals.values)
-                {
-                    normalList.Add(texture.value);
-                }
-
-                String mipmapsString = config.GetValue("mipmaps");
-                String compressString = config.GetValue("compress");
-                String scaleString = config.GetValue("scale");
-                String max_sizeString = config.GetValue("max_size");
-                String filter_modeString = config.GetValue("filter_mode");
-                String make_not_readableString = config.GetValue("make_not_readable");
-
-                bool.TryParse(mipmapsString, out config_mipmaps);
-                bool.TryParse(compressString, out config_compress);
-                int.TryParse(scaleString, out config_scale);
-                int.TryParse(max_sizeString, out config_max_size);
-                config_filter_mode = (FilterMode)Enum.Parse(typeof(FilterMode), filter_modeString);
-                bool.TryParse(make_not_readableString, out config_make_not_readable);
-
-                String mipmapsString_normals = config.GetValue("mipmaps_normals");
-                String compressString_normals = config.GetValue("compress_normals");
-                String scaleString_normals = config.GetValue("scale_normals");
-                String max_sizeString_normals = config.GetValue("max_size_normals");
-
-                bool.TryParse(mipmapsString_normals, out config_mipmaps_normals);
-                bool.TryParse(compressString_normals, out config_compress_normals);
-                int.TryParse(scaleString_normals, out config_scale_normals);
-                int.TryParse(max_sizeString_normals, out config_max_size_normals);
-
-                Log("Settings:");
-                Log("   mipmaps: " + config_mipmaps);
-                Log("   compress: " + config_compress);
-                Log("   scale: " + config_scale);
-                Log("   max_size: " + config_max_size);
-                Log("   mipmaps_normals: " + config_mipmaps_normals);
-                Log("   compress_normals: " + config_compress_normals);
-                Log("   scale_normals: " + config_scale_normals);
-                Log("   max_size_normals: " + config_max_size_normals);
-                Log("   filter_mode: " + config_filter_mode);
-                Log("   make_not_readable: " + config_make_not_readable);
-                Log("   normal List: ");
-                foreach(String normal in normalList)
-                {
-                    DBGLog("      "+normal);
-                }
-            }
-        }
-
-        private void CopyConfigNode(ConfigNode original, ConfigNode copy)
-        {
-            if (original != null)
-            {
-                foreach (ConfigNode node in original.nodes)
-                {
-                    copy.AddNode(node);
-                }
-                foreach (ConfigNode.Value value in original.values)
-                {
-                    copy.AddValue(value.name, value.value);
-                }
-            }
-        }
-
-        static public GameDatabase.TextureInfo UpdateTexture(TexInfo texture)
-        {
-            string overrideName = overridesList.Find(n => texture.name.Length == Regex.Match(texture.name, n).Length);
-            bool mipmaps = ActiveTextureManagement.config_mipmaps;
-            bool compress = ActiveTextureManagement.config_compress;
-            int scale = ActiveTextureManagement.config_scale;
-            int maxSize = ActiveTextureManagement.config_max_size;
-            if (texture.isNormalMap)
-            {
-                mipmaps = ActiveTextureManagement.config_mipmaps_normals;
-                compress = ActiveTextureManagement.config_compress_normals;
-                scale = ActiveTextureManagement.config_scale_normals;
-                maxSize = ActiveTextureManagement.config_max_size_normals;
-            }
-            FilterMode filterMode = config_filter_mode;
-            bool makeNotReadable = config_make_not_readable;
-
-            if (overrideName != null)
-            {
-                ConfigNode overrideNode = overrides.GetNode(overrideName);
-                String normalString = texture.isNormalMap ? "_normals" : "";
-                String mipmapsString = overrideNode.GetValue("mipmaps" + normalString);
-                String compressString = overrideNode.GetValue("compress" + normalString);
-                String scaleString = overrideNode.GetValue("scale" + normalString);
-                String max_sizeString = overrideNode.GetValue("max_size" + normalString);
-                String filter_modeString = overrideNode.GetValue("filter_mode");
-                String make_not_readableString = overrideNode.GetValue("make_not_readable");
-                if (mipmapsString != null)
-                {
-                    bool.TryParse(mipmapsString, out mipmaps);
-                }
-                if (compressString != null)
-                {
-                    bool.TryParse(compressString, out compress);
-                }
-                if (scaleString != null)
-                {
-                    int.TryParse(scaleString, out scale);
-                }
-                if (filter_modeString != null)
-                {
-                    try
-                    {
-                        filterMode = (FilterMode)Enum.Parse(typeof(FilterMode), filter_modeString);
-                    }
-                    catch
-                    {
-                        filterMode = config_filter_mode;
-                    }
-                }
-                if (make_not_readableString != null)
-                {
-                    bool.TryParse(make_not_readableString, out makeNotReadable);
-                }
-                if (max_sizeString != null)
-                {
-                    int.TryParse(max_sizeString, out maxSize);
-                }
-            }
-
-            texture.SetScalingParams(scale, maxSize);
-
-            GameDatabase.TextureInfo ret = CacheController.FetchCacheTexture(texture, compress, mipmaps, makeNotReadable && !readableList.Contains(texture.name));
-            ret.texture.filterMode = filterMode;
-            return ret;
-        }
-
+        
         private void updateMemoryCount(int originalWidth, int originalHeight, TextureFormat originalFormat, bool originalMipmaps, GameDatabase.TextureInfo Texture, String folder)
         {
             int saved = CacheController.MemorySaved(originalWidth, originalHeight, originalFormat, originalMipmaps, Texture);
