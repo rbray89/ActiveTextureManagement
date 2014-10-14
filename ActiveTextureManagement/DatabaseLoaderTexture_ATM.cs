@@ -157,64 +157,78 @@ namespace ActiveTextureManagement
 
         static public GameDatabase.TextureInfo UpdateTexture(TexInfo texture)
         {
+            
             string overrideName = overridesList.Find(n => texture.name.Length == Regex.Match(texture.name, n).Length);
-            bool mipmaps = DatabaseLoaderTexture_ATM.config_mipmaps;
-            bool compress = DatabaseLoaderTexture_ATM.config_compress;
-            int scale = DatabaseLoaderTexture_ATM.config_scale;
-            int maxSize = DatabaseLoaderTexture_ATM.config_max_size;
-            if (texture.isNormalMap)
-            {
-                mipmaps = DatabaseLoaderTexture_ATM.config_mipmaps_normals;
-                compress = DatabaseLoaderTexture_ATM.config_compress_normals;
-                scale = DatabaseLoaderTexture_ATM.config_scale_normals;
-                maxSize = DatabaseLoaderTexture_ATM.config_max_size_normals;
-            }
-            FilterMode filterMode = config_filter_mode;
-            bool makeNotReadable = config_make_not_readable;
+            bool mipmaps = true;
+            bool compress = texture.isNormalMap ? false : true;
+            int scale = 1;
+            int maxSize = 0;
+            FilterMode filterMode = FilterMode.Bilinear;
+            bool makeNotReadable = false;
 
-            if (overrideName != null)
+            if (foldersList.Exists(n => texture.name.StartsWith(n)))
             {
-                ConfigNode overrideNode = overrides.GetNode(overrideName);
-                String normalString = texture.isNormalMap ? "_normals" : "";
-                String mipmapsString = overrideNode.GetValue("mipmaps" + normalString);
-                String compressString = overrideNode.GetValue("compress" + normalString);
-                String scaleString = overrideNode.GetValue("scale" + normalString);
-                String max_sizeString = overrideNode.GetValue("max_size" + normalString);
-                String filter_modeString = overrideNode.GetValue("filter_mode");
-                String make_not_readableString = overrideNode.GetValue("make_not_readable");
-                if (mipmapsString != null)
+
+                if (texture.isNormalMap)
                 {
-                    bool.TryParse(mipmapsString, out mipmaps);
+                    mipmaps = DatabaseLoaderTexture_ATM.config_mipmaps_normals;
+                    compress = DatabaseLoaderTexture_ATM.config_compress_normals;
+                    scale = DatabaseLoaderTexture_ATM.config_scale_normals;
+                    maxSize = DatabaseLoaderTexture_ATM.config_max_size_normals;
                 }
-                if (compressString != null)
+                else
                 {
-                    bool.TryParse(compressString, out compress);
+                    mipmaps = DatabaseLoaderTexture_ATM.config_mipmaps;
+                    compress = DatabaseLoaderTexture_ATM.config_compress;
+                    scale = DatabaseLoaderTexture_ATM.config_scale;
+                    maxSize = DatabaseLoaderTexture_ATM.config_max_size;
                 }
-                if (scaleString != null)
+                filterMode = config_filter_mode;
+                makeNotReadable = config_make_not_readable;
+
+                if (overrideName != null)
                 {
-                    int.TryParse(scaleString, out scale);
-                }
-                if (filter_modeString != null)
-                {
-                    try
+                    ConfigNode overrideNode = overrides.GetNode(overrideName);
+                    String normalString = texture.isNormalMap ? "_normals" : "";
+                    String mipmapsString = overrideNode.GetValue("mipmaps" + normalString);
+                    String compressString = overrideNode.GetValue("compress" + normalString);
+                    String scaleString = overrideNode.GetValue("scale" + normalString);
+                    String max_sizeString = overrideNode.GetValue("max_size" + normalString);
+                    String filter_modeString = overrideNode.GetValue("filter_mode");
+                    String make_not_readableString = overrideNode.GetValue("make_not_readable");
+                    if (mipmapsString != null)
                     {
-                        filterMode = (FilterMode)Enum.Parse(typeof(FilterMode), filter_modeString);
+                        bool.TryParse(mipmapsString, out mipmaps);
                     }
-                    catch
+                    if (compressString != null)
                     {
-                        filterMode = config_filter_mode;
+                        bool.TryParse(compressString, out compress);
                     }
-                }
-                if (make_not_readableString != null)
-                {
-                    bool.TryParse(make_not_readableString, out makeNotReadable);
-                }
-                if (max_sizeString != null)
-                {
-                    int.TryParse(max_sizeString, out maxSize);
+                    if (scaleString != null)
+                    {
+                        int.TryParse(scaleString, out scale);
+                    }
+                    if (filter_modeString != null)
+                    {
+                        try
+                        {
+                            filterMode = (FilterMode)Enum.Parse(typeof(FilterMode), filter_modeString);
+                        }
+                        catch
+                        {
+                            filterMode = config_filter_mode;
+                        }
+                    }
+                    if (make_not_readableString != null)
+                    {
+                        bool.TryParse(make_not_readableString, out makeNotReadable);
+                    }
+                    if (max_sizeString != null)
+                    {
+                        int.TryParse(max_sizeString, out maxSize);
+                    }
                 }
             }
-
             texture.SetScalingParams(scale, maxSize);
 
             GameDatabase.TextureInfo ret = CacheController.FetchCacheTexture(texture, compress, mipmaps, makeNotReadable && !readableList.Contains(texture.name));
