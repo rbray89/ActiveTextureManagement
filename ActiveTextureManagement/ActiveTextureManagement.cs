@@ -22,6 +22,7 @@ namespace ActiveTextureManagement
 
         public int scale;
         public int maxSize;
+        public int minSize;
         public bool isNormalMap;
 
         public bool loadOriginalFirst;
@@ -37,10 +38,11 @@ namespace ActiveTextureManagement
             needsResize = false;
         }
 
-        public void SetScalingParams(int scale, int maxSize)
+        public void SetScalingParams(int scale, int maxSize, int minSize)
         {
             this.scale = scale;
             this.maxSize = maxSize;
+            this.minSize = minSize;
         }
 
         public void Resize(int width, int height)
@@ -56,12 +58,12 @@ namespace ActiveTextureManagement
             resizeHeight = height / scale;
 
             int tmpScale = scale - 1;
-            while (resizeWidth < 1 && tmpScale > 0)
+            while (resizeWidth < minSize && tmpScale > 0)
             {
                 resizeWidth = width / tmpScale--;
             }
             tmpScale = scale - 1;
-            while (resizeHeight < 1 && tmpScale > 0)
+            while (resizeHeight < minSize && tmpScale > 0)
             {
                 resizeHeight = height / tmpScale--;
             }

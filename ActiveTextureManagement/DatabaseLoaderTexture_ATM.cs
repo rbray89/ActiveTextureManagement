@@ -26,11 +26,13 @@ namespace ActiveTextureManagement
         static bool config_mipmaps = false;
         static bool config_compress = true;
         static int config_scale = 1;
-        static int config_max_size = 1;
+        static int config_max_size = 0;
+        static int config_min_size = 128;
         static bool config_mipmaps_normals = false;
         static bool config_compress_normals = true;
         static int config_scale_normals = 1;
-        static int config_max_size_normals = 1;
+        static int config_max_size_normals = 0;
+        static int config_min_size_normals = 128;
         static FilterMode config_filter_mode = FilterMode.Bilinear;
         static bool config_make_not_readable = false;
 
@@ -101,6 +103,7 @@ namespace ActiveTextureManagement
                 String compressString = config.GetValue("compress");
                 String scaleString = config.GetValue("scale");
                 String max_sizeString = config.GetValue("max_size");
+                String min_sizeString = config.GetValue("min_size");
                 String filter_modeString = config.GetValue("filter_mode");
                 String make_not_readableString = config.GetValue("make_not_readable");
 
@@ -108,6 +111,7 @@ namespace ActiveTextureManagement
                 bool.TryParse(compressString, out config_compress);
                 int.TryParse(scaleString, out config_scale);
                 int.TryParse(max_sizeString, out config_max_size);
+                int.TryParse(min_sizeString, out config_min_size);
                 config_filter_mode = (FilterMode)Enum.Parse(typeof(FilterMode), filter_modeString);
                 bool.TryParse(make_not_readableString, out config_make_not_readable);
 
@@ -115,17 +119,20 @@ namespace ActiveTextureManagement
                 String compressString_normals = config.GetValue("compress_normals");
                 String scaleString_normals = config.GetValue("scale_normals");
                 String max_sizeString_normals = config.GetValue("max_size_normals");
+                String min_sizeString_normals = config.GetValue("min_size_normals");
 
                 bool.TryParse(mipmapsString_normals, out config_mipmaps_normals);
                 bool.TryParse(compressString_normals, out config_compress_normals);
                 int.TryParse(scaleString_normals, out config_scale_normals);
                 int.TryParse(max_sizeString_normals, out config_max_size_normals);
+                int.TryParse(min_sizeString_normals, out config_min_size_normals);
 
                 Log("Settings:");
                 Log("   mipmaps: " + config_mipmaps);
                 Log("   compress: " + config_compress);
                 Log("   scale: " + config_scale);
                 Log("   max_size: " + config_max_size);
+                Log("   min_size: " + config_min_size);
                 Log("   mipmaps_normals: " + config_mipmaps_normals);
                 Log("   compress_normals: " + config_compress_normals);
                 Log("   scale_normals: " + config_scale_normals);
@@ -163,6 +170,7 @@ namespace ActiveTextureManagement
             bool compress = texture.isNormalMap ? false : true;
             int scale = 1;
             int maxSize = 0;
+            int minSize = 64;
             FilterMode filterMode = FilterMode.Bilinear;
             bool makeNotReadable = false;
 
@@ -175,6 +183,7 @@ namespace ActiveTextureManagement
                     compress = DatabaseLoaderTexture_ATM.config_compress_normals;
                     scale = DatabaseLoaderTexture_ATM.config_scale_normals;
                     maxSize = DatabaseLoaderTexture_ATM.config_max_size_normals;
+                    minSize = DatabaseLoaderTexture_ATM.config_min_size_normals;
                 }
                 else
                 {
@@ -182,6 +191,7 @@ namespace ActiveTextureManagement
                     compress = DatabaseLoaderTexture_ATM.config_compress;
                     scale = DatabaseLoaderTexture_ATM.config_scale;
                     maxSize = DatabaseLoaderTexture_ATM.config_max_size;
+                    minSize = DatabaseLoaderTexture_ATM.config_min_size;
                 }
                 filterMode = config_filter_mode;
                 makeNotReadable = config_make_not_readable;
@@ -194,8 +204,10 @@ namespace ActiveTextureManagement
                     String compressString = overrideNode.GetValue("compress" + normalString);
                     String scaleString = overrideNode.GetValue("scale" + normalString);
                     String max_sizeString = overrideNode.GetValue("max_size" + normalString);
+                    String min_sizeString = overrideNode.GetValue("min_size" + normalString);
                     String filter_modeString = overrideNode.GetValue("filter_mode");
                     String make_not_readableString = overrideNode.GetValue("make_not_readable");
+
                     if (mipmapsString != null)
                     {
                         bool.TryParse(mipmapsString, out mipmaps);
@@ -227,9 +239,13 @@ namespace ActiveTextureManagement
                     {
                         int.TryParse(max_sizeString, out maxSize);
                     }
+                    if (min_sizeString != null)
+                    {
+                        int.TryParse(min_sizeString, out minSize);
+                    }
                 }
             }
-            texture.SetScalingParams(scale, maxSize);
+            texture.SetScalingParams(scale, maxSize, minSize);
 
             GameDatabase.TextureInfo ret = CacheController.FetchCacheTexture(texture, compress, mipmaps, makeNotReadable && !readableList.Contains(texture.name));
             ret.texture.filterMode = filterMode;
