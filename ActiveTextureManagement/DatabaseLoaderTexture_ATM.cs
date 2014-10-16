@@ -305,7 +305,6 @@ namespace ActiveTextureManagement
         {
             TexInfo t = new TexInfo(urlFile.url);
             GameDatabase.TextureInfo texture = UpdateTexture(t);
-            GameDatabase.Instance.databaseTexture.Add(texture);
             obj = texture;
             successful = true;
             yield return null;
