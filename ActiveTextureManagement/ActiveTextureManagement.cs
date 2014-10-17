@@ -150,7 +150,7 @@ namespace ActiveTextureManagement
                 if (textureLoader.GetType().Name != "DatabaseLoaderTexture_ATM")
                 {
                     Log("Disabling " + textureLoader.GetType().Name);
-                    textureLoader.extensions.Clear();
+                    textureLoader.extensions.RemoveAll(i => DatabaseLoaderTexture_ATM.ExtensionList.Contains(i));
                 }
             }
         }

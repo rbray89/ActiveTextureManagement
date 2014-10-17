@@ -15,6 +15,7 @@ namespace ActiveTextureManagement
     [DatabaseLoaderAttrib(new string[] { "png", "tga", "mbm", "jpg", "jpeg", "truecolor" })]
     public class DatabaseLoaderTexture_ATM : DatabaseLoader<GameDatabase.TextureInfo>
     {
+        public static List<String> ExtensionList = new List<String>( new String[]{"png", "tga", "mbm", "jpg", "jpeg", "truecolor"});
 
         static ConfigNode config;
         static ConfigNode overrides;
