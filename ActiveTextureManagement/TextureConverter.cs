@@ -9,6 +9,14 @@ namespace ActiveTextureManagement
 {
     class TextureConverter
     {
+        const int DDS_DWSIZE_POS = 4;
+        const int DDS_DWFLAGS_POS = 8;
+        const int DDS_DWMIPMAPCOUNT_POS = 28;
+        const int DDS_PIXELFORMAT_POS = 84;
+        const int DDS_DDSCAPS_POS = 76;
+
+        const uint DDS_MIPMAPCOUNT_MASK = 0x00020000;
+
         const int MAX_IMAGE_SIZE = 4048 * 4048 * 5;
         static byte[] imageBuffer = null;
 
@@ -25,7 +33,7 @@ namespace ActiveTextureManagement
             imageBuffer = null;
         }
 
-        public static void Resize(GameDatabase.TextureInfo texture, int width, int height, bool mipmaps, bool convertToNormalFormat)
+        public static void Resize(TextureInfoWrapper texture, int width, int height, bool mipmaps, bool convertToNormalFormat)
         {
             ActiveTextureManagement.DBGLog("Resizing...");
             Texture2D tex = texture.texture;
@@ -185,7 +193,7 @@ namespace ActiveTextureManagement
 
         public static void MBMToTexture(TexInfo Texture, bool mipmaps)
         {
-            GameDatabase.TextureInfo texture = Texture.texture;
+            TextureInfoWrapper texture = Texture.texture;
             TextureConverter.InitImageBuffer();
             FileStream mbmStream = new FileStream(Texture.filename, FileMode.Open, FileAccess.Read);
             mbmStream.Position = 4;
@@ -276,7 +284,7 @@ namespace ActiveTextureManagement
 
         public static void IMGToTexture(TexInfo Texture, bool mipmaps, bool isNormalFormat)
         {
-            GameDatabase.TextureInfo texture = Texture.texture;
+            TextureInfoWrapper texture = Texture.texture;
             TextureConverter.InitImageBuffer();
             FileStream imgStream = new FileStream(Texture.filename, FileMode.Open, FileAccess.Read);
             imgStream.Position = 0;
@@ -287,16 +295,16 @@ namespace ActiveTextureManagement
             tex.LoadImage(imageBuffer);
             bool convertToNormalFormat = texture.isNormalMap && !isNormalFormat ? true : false;
             bool hasMipmaps = tex.mipmapCount == 1 ? false : true;
-            if(Texture.loadOriginalFirst)
+            if (Texture.loadOriginalFirst)
             {
                 Texture.Resize(tex.width, tex.height);
             }
             TextureFormat format = tex.format;
-            if(texture.isNormalMap)
+            if (texture.isNormalMap)
             {
                 format = TextureFormat.ARGB32;
             }
-            if(Texture.needsResize)
+            if (Texture.needsResize)
             {
                 TextureConverter.Resize(texture, Texture.resizeWidth, Texture.resizeHeight, mipmaps, convertToNormalFormat);
             }
@@ -319,12 +327,12 @@ namespace ActiveTextureManagement
                 tex.SetPixels32(pixels);
                 tex.Apply(mipmaps);
             }
-            
+
         }
 
         public static void TGAToTexture(TexInfo Texture, bool mipmaps)
         {
-            GameDatabase.TextureInfo texture = Texture.texture;
+            TextureInfoWrapper texture = Texture.texture;
             TextureConverter.InitImageBuffer();
             FileStream tgaStream = new FileStream(Texture.filename, FileMode.Open, FileAccess.Read);
             tgaStream.Position = 0;
@@ -450,6 +458,50 @@ namespace ActiveTextureManagement
             tex.Apply(mipmaps, false);
         }
 
+        public static void DDSToTexture(TexInfo Texture, bool mipmaps, bool isNormalFormat)
+        {
+            TextureInfoWrapper texture = Texture.texture;
+            TextureConverter.InitImageBuffer();
+            FileStream imgStream = new FileStream(Texture.filename, FileMode.Open, FileAccess.Read);
+            imgStream.Position = 0;
+            imgStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
+            imgStream.Close();
+
+            uint headerlength = BitConverter.ToUInt32(imageBuffer, DDS_DWSIZE_POS);
+            uint dwflags = BitConverter.ToUInt32(imageBuffer, DDS_DWFLAGS_POS);
+            int mipmapCount = BitConverter.ToInt32(imageBuffer, DDS_DWMIPMAPCOUNT_POS);
+
+            if( ( dwflags & DDS_MIPMAPCOUNT_MASK ) == 0)
+            {
+                mipmapCount = 1;
+            }
+
+            string fourCC = Encoding.ASCII.GetString(imageBuffer, DDS_PIXELFORMAT_POS, 4);
+
+            TextureFormat format = TextureFormat.DXT1;
+            if (fourCC == "DXT5")
+            {
+                format = TextureFormat.DXT5;
+            }
+
+            uint dataStart = (headerlength + 4);
+            long length = imageBuffer.Length - dataStart;
+
+
+            byte[] dxtBytes = new byte[length];
+            for(uint src = dataStart, dst = 0; src < imageBuffer.Length; src++, dst++)
+            {
+                dxtBytes[dst] = imageBuffer[src];
+            }
+
+
+
+            Texture2D tex = texture.texture;
+            tex.Resize(tex.width, tex.height, format, mipmapCount != 1);
+            tex.LoadRawTextureData(imageBuffer);
+
+        }
+
         public static void GetReadable(TexInfo Texture, bool mipmaps)
         {
             String mbmPath = KSPUtil.ApplicationRootPath + "GameData/" + Texture.name + ".mbm";
@@ -469,8 +521,8 @@ namespace ActiveTextureManagement
                 {
                     name = Texture.name;
                 }
-                
-                GameDatabase.TextureInfo newTexture = new GameDatabase.TextureInfo(tex, Texture.isNormalMap, true, false);
+
+                TextureInfoWrapper newTexture = new TextureInfoWrapper(tex, Texture.isNormalMap, true, false);
                 Texture.texture = newTexture;
                 newTexture.name = Texture.name;
                 if (File.Exists(pngPath))

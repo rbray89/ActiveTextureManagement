@@ -163,7 +163,7 @@ namespace ActiveTextureManagement
             }
         }
 
-        static public GameDatabase.TextureInfo UpdateTexture(TexInfo texture)
+        static public TextureInfoWrapper UpdateTexture(TexInfo texture)
         {
             
             string overrideName = overridesList.Find(n => texture.name.Length == Regex.Match(texture.name, n).Length);
@@ -248,7 +248,7 @@ namespace ActiveTextureManagement
             }
             texture.SetScalingParams(scale, maxSize, minSize);
 
-            GameDatabase.TextureInfo ret = CacheController.FetchCacheTexture(texture, compress, mipmaps, makeNotReadable && !readableList.Contains(texture.name));
+            TextureInfoWrapper ret = CacheController.FetchCacheTexture(texture, compress, mipmaps, makeNotReadable && !readableList.Contains(texture.name));
             ret.texture.filterMode = filterMode;
             return ret;
         }
@@ -271,31 +271,6 @@ namespace ActiveTextureManagement
             }
             return isNormal;
         }
-
-        private static void SetNormalMap(GameDatabase.TextureInfo Texture)
-        {
-            Texture.isNormalMap = IsNormal(Texture.name);
-        }
-
-        private void tryCompress(GameDatabase.TextureInfo Texture)
-        {
-            Texture2D tex = Texture.texture;
-            if (tex.format != TextureFormat.DXT1 && tex.format != TextureFormat.DXT5)
-            {
-                try
-                {
-                    tex.GetPixel(0, 0);
-                    tex.Compress(true);
-                    Texture.isCompressed = true;
-                    Texture.isReadable = true;
-                }
-                catch
-                {
-                    Texture.isReadable = false;
-                }
-            }
-        }
-
 
         public DatabaseLoaderTexture_ATM() : base()
         {

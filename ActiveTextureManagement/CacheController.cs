@@ -14,7 +14,7 @@ namespace ActiveTextureManagement
         static String MD5String = "";
         static String LastFile = "";
 
-        public static GameDatabase.TextureInfo FetchCacheTexture(TexInfo Texture, bool compress, bool mipmaps, bool makeNotReadable)
+        public static TextureInfoWrapper FetchCacheTexture(TexInfo Texture, bool compress, bool mipmaps, bool makeNotReadable)
         {
             String textureName = Texture.name;
             String originalTextureFile = KSPUtil.ApplicationRootPath + "GameData/" + textureName;
@@ -85,10 +85,10 @@ namespace ActiveTextureManagement
                         ActiveTextureManagement.DBGLog("Loading from cache... " + textureName);
                         Texture.needsResize = false;
                         Texture2D newTex = new Texture2D(4, 4);
-                        GameDatabase.TextureInfo cacheTexture = new GameDatabase.TextureInfo(newTex, Texture.isNormalMap, !makeNotReadable, compress);
+                        TextureInfoWrapper cacheTexture = new TextureInfoWrapper(newTex, Texture.isNormalMap, !makeNotReadable, compress);
                         Texture.texture = cacheTexture;
                         Texture.filename = cacheFile;
-                        TextureConverter.IMGToTexture(Texture, mipmaps, cacheIsNorm);
+                        TextureConverter.DDSToTexture(Texture, mipmaps, cacheIsNorm);
                         cacheTexture.name = textureName;
                         newTex.name = textureName;
                         if (compress)
@@ -111,14 +111,14 @@ namespace ActiveTextureManagement
 
         }
 
-        private static GameDatabase.TextureInfo RebuildCache(TexInfo Texture, bool compress, bool mipmaps, bool makeNotReadable)
+        private static TextureInfoWrapper RebuildCache(TexInfo Texture, bool compress, bool mipmaps, bool makeNotReadable)
         {
             Texture.loadOriginalFirst = true;
             ActiveTextureManagement.DBGLog("Loading texture...");
             TextureConverter.GetReadable(Texture, mipmaps);
             ActiveTextureManagement.DBGLog("Texture loaded.");
-            
-            GameDatabase.TextureInfo cacheTexture = Texture.texture;
+
+            TextureInfoWrapper cacheTexture = Texture.texture;
             Texture2D tex = cacheTexture.texture;
 
             String textureName = cacheTexture.name;
@@ -163,14 +163,8 @@ namespace ActiveTextureManagement
                 tex.Compress(true);
             }
             cacheTexture.isCompressed = compress;
-            if (!makeNotReadable)
-            {
-                tex.Apply(mipmaps);
-            }
-            else
-            {
-                tex.Apply(mipmaps, true);
-            }
+            tex.Apply(mipmaps, makeNotReadable);
+            
             cacheTexture.isReadable = !makeNotReadable;
             
             return cacheTexture;

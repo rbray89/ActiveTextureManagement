@@ -18,7 +18,7 @@ namespace ActiveTextureManagement
         public int resizeWidth;
         public int resizeHeight;
         public string filename;
-        public GameDatabase.TextureInfo texture;
+        public TextureInfoWrapper texture;
 
         public int scale;
         public int maxSize;
@@ -121,6 +121,11 @@ namespace ActiveTextureManagement
                     Log("MipMaps: " + texture.mipmapCount.ToString());
                     Log("Size: " + texture.width.ToString() + "x" + texture.height);
                     Log("Readable: " + Texture.isReadable);
+                    bool readable = true;
+                    try { Texture.texture.GetPixel(0, 0); }
+                    catch { readable = false; };
+                    if (readable != Texture.isReadable)
+                    { ActiveTextureManagement.DBGLog("Readbility does not match!"); }
                 }
                 long bSaved = memorySaved;
                 long kbSaved = (long)(bSaved / 1024f);
@@ -151,6 +156,7 @@ namespace ActiveTextureManagement
                 {
                     Log("Disabling " + textureLoader.GetType().Name);
                     textureLoader.extensions.RemoveAll(i => DatabaseLoaderTexture_ATM.ExtensionList.Contains(i));
+                    Log(textureLoader.GetType().Name + " now has extensions: " + String.Join(", ", textureLoader.extensions.ToArray()));
                 }
             }
         }
