@@ -256,7 +256,7 @@ namespace ActiveTextureManagement
 
         public static bool IsNormal(String name)
         {
-            bool isNormal = name.EndsWith("_NRM") || normalList.Contains(name);
+            bool isNormal = name.EndsWith("NRM") || normalList.Contains(name);
             String originalTextureFile = KSPUtil.ApplicationRootPath + "GameData/" + name + ".mbm";
             if (!isNormal && File.Exists(originalTextureFile))
             {
