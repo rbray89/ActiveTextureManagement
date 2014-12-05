@@ -91,6 +91,12 @@
     <Compile Include="TextureConverter.cs" />
     <Compile Include="TextureInfoWrapper.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LibSquishPort\LibSquishPort.csproj">
+      <Project>{6eaa2286-2b54-4445-b553-78b67f497ba9}</Project>
+      <Name>LibSquishPort</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy /Y $(TargetFileName) "$(SolutionDir)GameData\ActiveTextureManagement\Plugins\"

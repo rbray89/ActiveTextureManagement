@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LibSquishPort;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -566,6 +567,7 @@ namespace ActiveTextureManagement
             FileStream imgStream = new FileStream(cacheFile, FileMode.Create, FileAccess.Write);
             imgStream.Position = 0;
             byte[] png = cacheTexture.EncodeToPNG();
+            //squish.CompressImage(new byte[4], 0, 0, new byte[2], SquishFlags.kDxt5);
             imgStream.Write(png, 0, png.Length);
             imgStream.Close();
         }

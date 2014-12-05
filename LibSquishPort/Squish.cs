@@ -26,12 +26,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace LibSquishPort
 {
     [Flags]
-    enum SquishFlags
+    public enum SquishFlags
     {
         //! Use DXT1 compression.
         kDxt1 = (1 << 0),
@@ -83,59 +82,58 @@ namespace LibSquishPort
             return method | fit | metric | extra;
         }
 
-        void Compress(byte[] rgba, byte[] block, SquishFlags flags)
+        unsafe void Compress(byte[] rgba, byte* block, SquishFlags flags)
         {
             // compress with full mask
             CompressMasked(rgba, 0xffff, block, flags);
         }
 
-        unsafe void CompressMasked(byte[] rgba, int mask, byte[] block, SquishFlags flags)
+        static unsafe void CompressMasked(byte[] rgba, int mask, byte* pBlock, SquishFlags flags)
         {
             // fix any bad flags
             flags = FixFlags(flags);
 
-            fixed (byte* pBlock = block)
+
+            // get the block locations
+            byte* colourBlock = pBlock;
+            byte* alphaBock = pBlock;
+            if ((flags & (SquishFlags.kDxt3 | SquishFlags.kDxt5)) != 0)
+                colourBlock = pBlock + 8;
+
+            // create the minimal point set
+            ColourSet colours = new ColourSet(rgba, mask, flags);
+
+            // check the compression type and compress colour
+            if (colours.GetCount() == 1)
             {
-                // get the block locations
-                byte* colourBlock = pBlock;
-                byte* alphaBock = pBlock;
-                if ((flags & (SquishFlags.kDxt3 | SquishFlags.kDxt5)) != 0)
-                    colourBlock = pBlock + 8;
+                // always do a single colour fit
+                SingleColourFit fit = new SingleColourFit(colours, flags);
+                fit.Compress(colourBlock);
+            }
+            else if ((flags & SquishFlags.kColourRangeFit) != 0 || colours.GetCount() == 0)
+            {
+                // do a range fit
+                RangeFit fit = new RangeFit(colours, flags);
+                fit.Compress(colourBlock);
+            }
+            else
+            {
+                // default to a cluster fit (could be iterative or not)
+                ClusterFit fit = new ClusterFit(colours, flags);
+                fit.Compress(colourBlock);
+            }
 
-                // create the minimal point set
-                ColourSet colours = new ColourSet(rgba, mask, flags);
-
-                // check the compression type and compress colour
-                if (colours.GetCount() == 1)
-                {
-                    // always do a single colour fit
-                    SingleColourFit fit = new SingleColourFit(colours, flags);
-                    fit.Compress(colourBlock);
-                }
-                else if ((flags & SquishFlags.kColourRangeFit) != 0 || colours.GetCount() == 0)
-                {
-                    // do a range fit
-         //           RangeFit fit = new RangeFit(colours, flags);
-         //           fit.Compress(colourBlock);
-                }
-                else
-                {
-                    // default to a cluster fit (could be iterative or not)
-                    ClusterFit fit = new ClusterFit(colours, flags);
-                    fit.Compress(colourBlock);
-                }
-
-                // compress alpha separately if necessary
-                if ((flags & SquishFlags.kDxt3) != 0)
-                {
-   //                 CompressAlphaDxt3(rgba, mask, alphaBock);
-                }
-                else if ((flags & SquishFlags.kDxt5) != 0)
-                {
-    //                CompressAlphaDxt5(rgba, mask, alphaBock);
-                }
+            // compress alpha separately if necessary
+            if ((flags & SquishFlags.kDxt3) != 0)
+            {
+                alpha.CompressAlphaDxt3(rgba, mask, alphaBock);
+            }
+            else if ((flags & SquishFlags.kDxt5) != 0)
+            {
+                alpha.CompressAlphaDxt5(rgba, mask, alphaBock);
             }
         }
+        
         /*
         void Decompress( u8* rgba, void const* block, int flags )
         {
@@ -168,15 +166,17 @@ namespace LibSquishPort
             int blocksize = ((flags & SquishFlags.kDxt1) != 0) ? 8 : 16;
             return blockcount * blocksize;
         }
-/*
-        void CompressImage(byte[] rgba, int width, int height, byte[] blocks, SquishFlags flags)
+
+       public static unsafe void CompressImage(byte[] rgba, int width, int height, byte[] blocks, SquishFlags flags)
 {
 	// fix any bad flags
 	flags = FixFlags( flags );
 
 	// initialise the block output
-	u8* targetBlock = reinterpret_cast< u8* >( blocks );
-	int bytesPerBlock = ( ( flags & kDxt1 ) != 0 ) ? 8 : 16;
+           fixed(byte* pblocks = blocks, prgba = rgba)
+           {
+	byte* targetBlock = ( pblocks );
+	int bytesPerBlock = ( ( flags & SquishFlags.kDxt1 ) != 0 ) ? 8 : 16;
 
 	// loop over blocks
 	for( int y = 0; y < height; y += 4 )
@@ -184,8 +184,10 @@ namespace LibSquishPort
 		for( int x = 0; x < width; x += 4 )
 		{
 			// build the 4x4 block of pixels
-			u8 sourceRgba[16*4];
-			u8* targetPixel = sourceRgba;
+			byte[] sourceRgba = new byte [16*4];
+            fixed(byte* psourceRgba = sourceRgba)
+            {
+			byte* targetPixel = psourceRgba;
 			int mask = 0;
 			for( int py = 0; py < 4; ++py )
 			{
@@ -199,7 +201,7 @@ namespace LibSquishPort
 					if( sx < width && sy < height )
 					{
 						// copy the rgba value
-						u8 const* sourcePixel = rgba + 4*( width*sy + sx );
+						byte* sourcePixel = prgba + 4*( width*sy + sx );
 						for( int i = 0; i < 4; ++i )
 							*targetPixel++ = *sourcePixel++;
 							
@@ -216,13 +218,14 @@ namespace LibSquishPort
 			
 			// compress it into the output
 			CompressMasked( sourceRgba, mask, targetBlock, flags );
-			
+			}
 			// advance
 			targetBlock += bytesPerBlock;
 		}
 	}
+           }
 }
-      */
+      
         /*
 void DecompressImage( u8* rgba, int width, int height, void const* blocks, int flags )
 {
