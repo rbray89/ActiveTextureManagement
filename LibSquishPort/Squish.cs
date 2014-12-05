@@ -115,8 +115,8 @@ namespace LibSquishPort
                 else if ((flags & SquishFlags.kColourRangeFit) != 0 || colours.GetCount() == 0)
                 {
                     // do a range fit
-                    RangeFit fit = new RangeFit(colours, flags);
-                    fit.Compress(colourBlock);
+         //           RangeFit fit = new RangeFit(colours, flags);
+         //           fit.Compress(colourBlock);
                 }
                 else
                 {
@@ -127,9 +127,13 @@ namespace LibSquishPort
 
                 // compress alpha separately if necessary
                 if ((flags & SquishFlags.kDxt3) != 0)
-                    CompressAlphaDxt3(rgba, mask, alphaBock);
+                {
+   //                 CompressAlphaDxt3(rgba, mask, alphaBock);
+                }
                 else if ((flags & SquishFlags.kDxt5) != 0)
-                    CompressAlphaDxt5(rgba, mask, alphaBock);
+                {
+    //                CompressAlphaDxt5(rgba, mask, alphaBock);
+                }
             }
         }
         /*
@@ -164,7 +168,7 @@ namespace LibSquishPort
             int blocksize = ((flags & SquishFlags.kDxt1) != 0) ? 8 : 16;
             return blockcount * blocksize;
         }
-
+/*
         void CompressImage(byte[] rgba, int width, int height, byte[] blocks, SquishFlags flags)
 {
 	// fix any bad flags
@@ -218,6 +222,7 @@ namespace LibSquishPort
 		}
 	}
 }
+      */
         /*
 void DecompressImage( u8* rgba, int width, int height, void const* blocks, int flags )
 {
