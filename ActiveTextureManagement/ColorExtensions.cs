@@ -6,29 +6,6 @@ using UnityEngine;
 
 namespace ActiveTextureManagement
 {
-    public class Color16
-    {
-        public Color16() { }
-        public Color16(Color16 c) { u = c.u; }
-        public Color16(ushort U) { u = U; }
-
-        public byte r;//5
-        public byte g;//6
-        public byte b;//5
-        ushort uvalue;
-        public ushort u 
-        {
-            set
-            {
-                uvalue = value;
-                r = (byte)(value & 0x1F);
-                g = (byte)((value>>5)&0x3F);
-                b = (byte)((value >> 11) & 0x1F);
-            }
-            get { return uvalue; }
-        }
-      
-    }
 
     public static class ColorExtensions
     {
