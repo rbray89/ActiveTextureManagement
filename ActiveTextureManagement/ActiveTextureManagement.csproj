@@ -86,14 +86,8 @@
     <Compile Include="CacheController.cs" />
     <Compile Include="ActiveTextureManagement.cs" />
     <Compile Include="Color16.cs" />
-    <Compile Include="ColorBlock.cs" />
     <Compile Include="DatabaseLoaderTexture_ATM.cs" />
-    <Compile Include="Fitting.cs" />
-    <Compile Include="OptimalCompress.cs" />
-    <Compile Include="QuickCompress.cs" />
-    <Compile Include="DXT.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Tex2dxt.cs" />
     <Compile Include="TextureConverter.cs" />
     <Compile Include="TextureInfoWrapper.cs" />
   </ItemGroup>
