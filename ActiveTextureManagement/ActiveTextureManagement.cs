@@ -27,6 +27,7 @@ namespace ActiveTextureManagement
 
         public bool loadOriginalFirst;
         public bool needsResize;
+        public bool readable;
 
         public TexInfo(string name)
         {
@@ -36,6 +37,7 @@ namespace ActiveTextureManagement
             this.height = 1;
             loadOriginalFirst = false;
             needsResize = false;
+            readable = true;
         }
 
         public void SetScalingParams(int scale, int maxSize, int minSize)

@@ -84,19 +84,11 @@ namespace ActiveTextureManagement
                     {
                         ActiveTextureManagement.DBGLog("Loading from cache... " + textureName);
                         Texture.needsResize = false;
-                        Texture2D newTex = new Texture2D(4, 4);
-                        TextureInfoWrapper cacheTexture = new TextureInfoWrapper(newTex, Texture.isNormalMap, !makeNotReadable, compress);
-                        Texture.texture = cacheTexture;
+
+                        Texture.readable = !makeNotReadable;
                         Texture.filename = cacheFile;
-                        TextureConverter.DDSToTexture(Texture, mipmaps, cacheIsNorm);
-                        cacheTexture.name = textureName;
-                        newTex.name = textureName;
-                        if (compress)
-                        {
-                            newTex.Compress(true);
-                        }
-                        newTex.Apply(mipmaps, makeNotReadable);
-                        return cacheTexture;
+                        
+                        return TextureConverter.DDSToTexture(Texture, mipmaps, cacheIsNorm); ;
                     }
                 }
                 else
@@ -123,40 +115,29 @@ namespace ActiveTextureManagement
 
             String textureName = cacheTexture.name;
             String cacheFile = KSPUtil.ApplicationRootPath + "GameData/ActiveTextureManagement/textureCache/" + textureName;
-            if (Texture.needsResize)
-            {
-                ActiveTextureManagement.DBGLog("Rebuilding Cache... " + Texture.name);
 
-                ActiveTextureManagement.DBGLog("Saving cache file " + cacheFile + ".pngcache");
-                TextureConverter.WriteTo(cacheTexture.texture, cacheFile + ".pngcache");
+            ActiveTextureManagement.DBGLog("Rebuilding Cache... " + Texture.name);
 
-                String originalTextureFile = Texture.filename;
-                String cacheConfigFile = cacheFile + ".tcache";
-                ActiveTextureManagement.DBGLog("Created Config for" + originalTextureFile);
+            ActiveTextureManagement.DBGLog("Saving cache file " + cacheFile + ".pngcache");
+            TextureConverter.WriteTo(cacheTexture.texture, cacheFile + ".pngcache");
 
-                String hashString = GetMD5String(originalTextureFile);
+            String originalTextureFile = Texture.filename;
+            String cacheConfigFile = cacheFile + ".tcache";
+            ActiveTextureManagement.DBGLog("Created Config for" + originalTextureFile);
 
-                ConfigNode config = new ConfigNode();
-                config.AddValue("md5", hashString); ActiveTextureManagement.DBGLog("md5: " + hashString);
-                config.AddValue("orig_format", Path.GetExtension(originalTextureFile)); ActiveTextureManagement.DBGLog("orig_format: " + Path.GetExtension(originalTextureFile));
-                config.AddValue("orig_width", Texture.width.ToString()); ActiveTextureManagement.DBGLog("orig_width: " + Texture.width.ToString());
-                config.AddValue("orig_height", Texture.height.ToString()); ActiveTextureManagement.DBGLog("orig_height: " + Texture.height.ToString());
-                config.AddValue("is_normal", cacheTexture.isNormalMap.ToString()); ActiveTextureManagement.DBGLog("is_normal: " + cacheTexture.isNormalMap.ToString());
-                config.AddValue("width", Texture.resizeWidth.ToString()); ActiveTextureManagement.DBGLog("width: " + Texture.resizeWidth.ToString());
-                config.AddValue("height", Texture.resizeHeight.ToString()); ActiveTextureManagement.DBGLog("height: " + Texture.resizeHeight.ToString());
+            String hashString = GetMD5String(originalTextureFile);
 
-                config.Save(cacheConfigFile);
-                ActiveTextureManagement.DBGLog("Saved Config.");
-            }
-            else
-            {
-                String directory = Path.GetDirectoryName(cacheFile + ".none");
-                if (File.Exists(directory))
-                {
-                    File.Delete(directory);
-                }
-                Directory.CreateDirectory(directory);
-            }
+            ConfigNode config = new ConfigNode();
+            config.AddValue("md5", hashString); ActiveTextureManagement.DBGLog("md5: " + hashString);
+            config.AddValue("orig_format", Path.GetExtension(originalTextureFile)); ActiveTextureManagement.DBGLog("orig_format: " + Path.GetExtension(originalTextureFile));
+            config.AddValue("orig_width", Texture.width.ToString()); ActiveTextureManagement.DBGLog("orig_width: " + Texture.width.ToString());
+            config.AddValue("orig_height", Texture.height.ToString()); ActiveTextureManagement.DBGLog("orig_height: " + Texture.height.ToString());
+            config.AddValue("is_normal", cacheTexture.isNormalMap.ToString()); ActiveTextureManagement.DBGLog("is_normal: " + cacheTexture.isNormalMap.ToString());
+            config.AddValue("width", Texture.resizeWidth.ToString()); ActiveTextureManagement.DBGLog("width: " + Texture.resizeWidth.ToString());
+            config.AddValue("height", Texture.resizeHeight.ToString()); ActiveTextureManagement.DBGLog("height: " + Texture.resizeHeight.ToString());
+
+            config.Save(cacheConfigFile);
+            ActiveTextureManagement.DBGLog("Saved Config.");
 
             if (compress)
             {

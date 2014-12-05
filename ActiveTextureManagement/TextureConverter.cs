@@ -10,13 +10,6 @@ namespace ActiveTextureManagement
 {
     class TextureConverter
     {
-        const int DDS_DWSIZE_POS = 4;
-        const int DDS_DWFLAGS_POS = 8;
-        const int DDS_DWMIPMAPCOUNT_POS = 28;
-        const int DDS_PIXELFORMAT_POS = 84;
-        const int DDS_DDSCAPS_POS = 76;
-
-        const uint DDS_MIPMAPCOUNT_MASK = 0x00020000;
 
         const int MAX_IMAGE_SIZE = 4048 * 4048 * 5;
         static byte[] imageBuffer = null;
@@ -459,48 +452,22 @@ namespace ActiveTextureManagement
             tex.Apply(mipmaps, false);
         }
 
-        public static void DDSToTexture(TexInfo Texture, bool mipmaps, bool isNormalFormat)
+        public static TextureInfoWrapper DDSToTexture(TexInfo Texture, bool mipmaps, bool isNormalFormat)
         {
-            TextureInfoWrapper texture = Texture.texture;
+
             TextureConverter.InitImageBuffer();
             FileStream imgStream = new FileStream(Texture.filename, FileMode.Open, FileAccess.Read);
             imgStream.Position = 0;
             imgStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
             imgStream.Close();
 
-            uint headerlength = BitConverter.ToUInt32(imageBuffer, DDS_DWSIZE_POS);
-            uint dwflags = BitConverter.ToUInt32(imageBuffer, DDS_DWFLAGS_POS);
-            int mipmapCount = BitConverter.ToInt32(imageBuffer, DDS_DWMIPMAPCOUNT_POS);
+            Texture2D newTex = new Texture2D(Texture.width, Texture.height, TextureFormat.DXT5, false);
+            //tex.Resize(tex.width, tex.height, TextureFormat.DXT5, false);
+            newTex.LoadRawTextureData(imageBuffer);
+            newTex.Apply(false, !Texture.readable);
+            newTex.name = Texture.name;
 
-            if( ( dwflags & DDS_MIPMAPCOUNT_MASK ) == 0)
-            {
-                mipmapCount = 1;
-            }
-
-            string fourCC = Encoding.ASCII.GetString(imageBuffer, DDS_PIXELFORMAT_POS, 4);
-
-            TextureFormat format = TextureFormat.DXT1;
-            if (fourCC == "DXT5")
-            {
-                format = TextureFormat.DXT5;
-            }
-
-            uint dataStart = (headerlength + 4);
-            long length = imageBuffer.Length - dataStart;
-
-
-            byte[] dxtBytes = new byte[length];
-            for(uint src = dataStart, dst = 0; src < imageBuffer.Length; src++, dst++)
-            {
-                dxtBytes[dst] = imageBuffer[src];
-            }
-
-
-
-            Texture2D tex = texture.texture;
-            tex.Resize(tex.width, tex.height, format, mipmapCount != 1);
-            tex.LoadRawTextureData(imageBuffer);
-
+            return new TextureInfoWrapper(newTex, Texture.isNormalMap, false, true);
         }
 
         public static void GetReadable(TexInfo Texture, bool mipmaps)
@@ -566,9 +533,9 @@ namespace ActiveTextureManagement
             Directory.CreateDirectory(directory);
             FileStream imgStream = new FileStream(cacheFile, FileMode.Create, FileAccess.Write);
             imgStream.Position = 0;
-            byte[] png = cacheTexture.EncodeToPNG();
-            //squish.CompressImage(new byte[4], 0, 0, new byte[2], SquishFlags.kDxt5);
-            imgStream.Write(png, 0, png.Length);
+            //byte[] png = cacheTexture.EncodeToPNG();
+            squish.CompressImage(cacheTexture.bytes(), cacheTexture.width, cacheTexture.height, imageBuffer, SquishFlags.kDxt5);
+            imgStream.Write(imageBuffer, 0, cacheTexture.width * cacheTexture.height);
             imgStream.Close();
         }
 
