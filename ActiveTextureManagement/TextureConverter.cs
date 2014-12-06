@@ -461,10 +461,10 @@ namespace ActiveTextureManagement
             imgStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
             imgStream.Close();
 
-            TextureFormat format = TextureFormat.DXT5;
+            TextureFormat format = TextureFormat.DXT1;
             if(hasAlpha)
             {
-                format = TextureFormat.DXT1;
+                format = TextureFormat.DXT5;
             }
 
             Texture2D newTex = new Texture2D(Texture.width, Texture.height, format, false);
@@ -544,7 +544,7 @@ namespace ActiveTextureManagement
             SquishFlags compression = SquishFlags.kDxt5;
             int size = cacheTexture.width * cacheTexture.height;
             bool hasAlpha = texHasAlpha(img);
-            if(hasAlpha)
+            if(!hasAlpha)
             {
                 compression = SquishFlags.kDxt1;
                 size /= 2;
