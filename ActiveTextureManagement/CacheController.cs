@@ -20,7 +20,7 @@ namespace ActiveTextureManagement
             String originalTextureFile = KSPUtil.ApplicationRootPath + "GameData/" + textureName;
             String cacheFile = KSPUtil.ApplicationRootPath + "GameData/ActiveTextureManagement/textureCache/" + textureName;
             String cacheConfigFile = cacheFile + ".tcache";
-            cacheFile += ".pngcache";
+            cacheFile += ".imgcache";
             if (File.Exists(cacheConfigFile))
             {
                 ConfigNode config = ConfigNode.Load(cacheConfigFile);
@@ -31,6 +31,7 @@ namespace ActiveTextureManagement
                 string origHeightString = config.GetValue("orig_height");
                 int.TryParse(origWidthString, out origWidth);
                 int.TryParse(origHeightString, out origHeight);
+               
 
                 if (origWidthString == null || origHeightString == null ||
                     cacheHash == null || format == null)
@@ -49,12 +50,15 @@ namespace ActiveTextureManagement
                     String cacheIsNormString = config.GetValue("is_normal");
                     String cacheWidthString = config.GetValue("width");
                     String cacheHeihtString = config.GetValue("height");
+                    string hasAlphaString = config.GetValue("hasAlpha");
                     bool cacheIsNorm = false;
                     int cacheWidth = 0;
                     int cacheHeight = 0;
+                    bool hasAlpha = true;
                     bool.TryParse(cacheIsNormString, out cacheIsNorm);
                     int.TryParse(cacheWidthString, out cacheWidth);
                     int.TryParse(cacheHeihtString, out cacheHeight);
+                    bool.TryParse(hasAlphaString, out hasAlpha);
 
                     if (cacheHash != hashString || cacheIsNorm != Texture.isNormalMap || Texture.resizeWidth != cacheWidth || Texture.resizeHeight != cacheHeight)
                     {
@@ -76,19 +80,16 @@ namespace ActiveTextureManagement
                         }
                         return RebuildCache(Texture, compress, mipmaps, makeNotReadable);
                     }
-                    else if (cacheHash == hashString && !Texture.needsResize)
-                    {
-                        return RebuildCache(Texture, compress, mipmaps, makeNotReadable);
-                    }
                     else
                     {
                         ActiveTextureManagement.DBGLog("Loading from cache... " + textureName);
                         Texture.needsResize = false;
-
+                        Texture.width = Texture.resizeWidth;
+                        Texture.height = Texture.resizeHeight;
                         Texture.readable = !makeNotReadable;
                         Texture.filename = cacheFile;
-                        
-                        return TextureConverter.DDSToTexture(Texture, mipmaps, cacheIsNorm); ;
+
+                        return TextureConverter.DDSToTexture(Texture, mipmaps, cacheIsNorm, hasAlpha); ;
                     }
                 }
                 else
@@ -118,8 +119,10 @@ namespace ActiveTextureManagement
 
             ActiveTextureManagement.DBGLog("Rebuilding Cache... " + Texture.name);
 
-            ActiveTextureManagement.DBGLog("Saving cache file " + cacheFile + ".pngcache");
-            TextureConverter.WriteTo(cacheTexture.texture, cacheFile + ".pngcache");
+            ActiveTextureManagement.DBGLog("Saving cache file " + cacheFile + ".imgcache");
+            Color32[] colors = cacheTexture.texture.GetPixels32();
+            
+            bool hasAlpha =TextureConverter.WriteTo(cacheTexture.texture, cacheFile + ".imgcache");
 
             String originalTextureFile = Texture.filename;
             String cacheConfigFile = cacheFile + ".tcache";
@@ -135,7 +138,7 @@ namespace ActiveTextureManagement
             config.AddValue("is_normal", cacheTexture.isNormalMap.ToString()); ActiveTextureManagement.DBGLog("is_normal: " + cacheTexture.isNormalMap.ToString());
             config.AddValue("width", Texture.resizeWidth.ToString()); ActiveTextureManagement.DBGLog("width: " + Texture.resizeWidth.ToString());
             config.AddValue("height", Texture.resizeHeight.ToString()); ActiveTextureManagement.DBGLog("height: " + Texture.resizeHeight.ToString());
-
+            config.AddValue("hasAlpha", hasAlpha); ActiveTextureManagement.DBGLog("hasAlpha: " + hasAlpha.ToString());
             config.Save(cacheConfigFile);
             ActiveTextureManagement.DBGLog("Saved Config.");
 

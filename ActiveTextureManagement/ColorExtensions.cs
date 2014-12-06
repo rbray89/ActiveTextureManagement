@@ -25,10 +25,10 @@ namespace ActiveTextureManagement
             Color32[] colors = texture.GetPixels32();
             for (int i = 0; i < colors.Length; i++ )
             {
-                array[i*4] = colors[i].r;
-                array[i*4+1] = colors[i].g;
-                array[i*4+2] = colors[i].b;
-                array[i*4+3] = colors[i].a;
+                array[(i*4)] = colors[i].r;
+                array[(i*4)+1] = colors[i].g;
+                array[(i*4)+2] = colors[i].b;
+                array[(i*4)+3] = colors[i].a;
             }
             return array;
         }

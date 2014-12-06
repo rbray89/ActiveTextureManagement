@@ -452,7 +452,7 @@ namespace ActiveTextureManagement
             tex.Apply(mipmaps, false);
         }
 
-        public static TextureInfoWrapper DDSToTexture(TexInfo Texture, bool mipmaps, bool isNormalFormat)
+        public static TextureInfoWrapper DDSToTexture(TexInfo Texture, bool mipmaps, bool isNormalFormat, bool hasAlpha)
         {
 
             TextureConverter.InitImageBuffer();
@@ -461,8 +461,14 @@ namespace ActiveTextureManagement
             imgStream.Read(imageBuffer, 0, MAX_IMAGE_SIZE);
             imgStream.Close();
 
-            Texture2D newTex = new Texture2D(Texture.width, Texture.height, TextureFormat.DXT5, false);
-            //tex.Resize(tex.width, tex.height, TextureFormat.DXT5, false);
+            TextureFormat format = TextureFormat.DXT5;
+            if(hasAlpha)
+            {
+                format = TextureFormat.DXT1;
+            }
+
+            Texture2D newTex = new Texture2D(Texture.width, Texture.height, format, false);
+
             newTex.LoadRawTextureData(imageBuffer);
             newTex.Apply(false, !Texture.readable);
             newTex.name = Texture.name;
@@ -523,7 +529,7 @@ namespace ActiveTextureManagement
             }
         }
 
-        internal static void WriteTo(Texture2D cacheTexture, string cacheFile)
+        internal static bool WriteTo(Texture2D cacheTexture, string cacheFile)
         {
             String directory = Path.GetDirectoryName(cacheFile + ".none");
             if (File.Exists(directory))
@@ -534,10 +540,31 @@ namespace ActiveTextureManagement
             FileStream imgStream = new FileStream(cacheFile, FileMode.Create, FileAccess.Write);
             imgStream.Position = 0;
             //byte[] png = cacheTexture.EncodeToPNG();
-            squish.CompressImage(cacheTexture.bytes(), cacheTexture.width, cacheTexture.height, imageBuffer, SquishFlags.kDxt5);
-            imgStream.Write(imageBuffer, 0, cacheTexture.width * cacheTexture.height);
+            byte[] img = cacheTexture.bytes();
+            SquishFlags compression = SquishFlags.kDxt5;
+            int size = cacheTexture.width * cacheTexture.height;
+            bool hasAlpha = texHasAlpha(img);
+            if(hasAlpha)
+            {
+                compression = SquishFlags.kDxt1;
+                size /= 2;
+            }
+            squish.CompressImage(img, cacheTexture.width, cacheTexture.height, imageBuffer, compression | SquishFlags.kColourIterativeClusterFit | SquishFlags.kWeightColourByAlpha);
+            imgStream.Write(imageBuffer, 0, size);
             imgStream.Close();
+            return hasAlpha;
         }
 
+        private static bool texHasAlpha(byte[] colors)
+        {
+            for (int i = 3; i < colors.Length; i+=4)
+            {
+                if (colors[i] < byte.MaxValue)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }

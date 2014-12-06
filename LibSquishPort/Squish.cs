@@ -133,7 +133,7 @@ namespace LibSquishPort
                 alpha.CompressAlphaDxt5(rgba, mask, alphaBock);
             }
         }
-        
+
         /*
         void Decompress( u8* rgba, void const* block, int flags )
         {
@@ -167,65 +167,65 @@ namespace LibSquishPort
             return blockcount * blocksize;
         }
 
-       public static unsafe void CompressImage(byte[] rgba, int width, int height, byte[] blocks, SquishFlags flags)
-{
-	// fix any bad flags
-	flags = FixFlags( flags );
+        public static unsafe void CompressImage(byte[] rgba, int width, int height, byte[] blocks, SquishFlags flags)
+        {
+            // fix any bad flags
+            flags = FixFlags(flags);
 
-	// initialise the block output
-           fixed(byte* pblocks = blocks, prgba = rgba)
-           {
-	byte* targetBlock = ( pblocks );
-	int bytesPerBlock = ( ( flags & SquishFlags.kDxt1 ) != 0 ) ? 8 : 16;
-
-	// loop over blocks
-	for( int y = 0; y < height; y += 4 )
-	{
-		for( int x = 0; x < width; x += 4 )
-		{
-			// build the 4x4 block of pixels
-			byte[] sourceRgba = new byte [16*4];
-            fixed(byte* psourceRgba = sourceRgba)
+            // initialise the block output
+            fixed (byte* pblocks = blocks, prgba = rgba)
             {
-			byte* targetPixel = psourceRgba;
-			int mask = 0;
-			for( int py = 0; py < 4; ++py )
-			{
-				for( int px = 0; px < 4; ++px )
-				{
-					// get the source pixel in the image
-					int sx = x + px;
-					int sy = y + py;
-					
-					// enable if we're in the image
-					if( sx < width && sy < height )
-					{
-						// copy the rgba value
-						byte* sourcePixel = prgba + 4*( width*sy + sx );
-						for( int i = 0; i < 4; ++i )
-							*targetPixel++ = *sourcePixel++;
-							
-						// enable this pixel
-						mask |= ( 1 << ( 4*py + px ) );
-					}
-					else
-					{
-						// skip this pixel as its outside the image
-						targetPixel += 4;
-					}
-				}
-			}
-			
-			// compress it into the output
-			CompressMasked( sourceRgba, mask, targetBlock, flags );
-			}
-			// advance
-			targetBlock += bytesPerBlock;
-		}
-	}
-           }
-}
-      
+                byte* targetBlock = (pblocks);
+                int bytesPerBlock = ((flags & SquishFlags.kDxt1) != 0) ? 8 : 16;
+
+                // loop over blocks
+                for (int y = 0; y < height; y += 4)
+                {
+                    for (int x = 0; x < width; x += 4)
+                    {
+                        // build the 4x4 block of pixels
+                        byte[] sourceRgba = new byte[16 * 4];
+                        fixed (byte* psourceRgba = sourceRgba)
+                        {
+                            byte* targetPixel = psourceRgba;
+                            int mask = 0;
+                            for (int py = 0; py < 4; ++py)
+                            {
+                                for (int px = 0; px < 4; ++px)
+                                {
+                                    // get the source pixel in the image
+                                    int sx = x + px;
+                                    int sy = y + py;
+
+                                    // enable if we're in the image
+                                    if (sx < width && sy < height)
+                                    {
+                                        // copy the rgba value
+                                        byte* sourcePixel = prgba + 4 * (width * sy + sx);
+                                        for (int i = 0; i < 4; ++i)
+                                            *targetPixel++ = *sourcePixel++;
+
+                                        // enable this pixel
+                                        mask |= (1 << (4 * py + px));
+                                    }
+                                    else
+                                    {
+                                        // skip this pixel as its outside the image
+                                        targetPixel += 4;
+                                    }
+                                }
+                            }
+
+                            // compress it into the output
+                            CompressMasked(sourceRgba, mask, targetBlock, flags);
+                        }
+                        // advance
+                        targetBlock += bytesPerBlock;
+                    }
+                }
+            }
+        }
+
         /*
 void DecompressImage( u8* rgba, int width, int height, void const* blocks, int flags )
 {

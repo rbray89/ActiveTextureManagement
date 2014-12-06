@@ -85,7 +85,7 @@
   <ItemGroup>
     <Compile Include="CacheController.cs" />
     <Compile Include="ActiveTextureManagement.cs" />
-    <Compile Include="Color16.cs" />
+    <Compile Include="ColorExtensions.cs" />
     <Compile Include="DatabaseLoaderTexture_ATM.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TextureConverter.cs" />
