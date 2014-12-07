@@ -19,10 +19,11 @@ namespace ActiveTextureManagement
             return new byte[4] { color.b, color.g, color.r, color.a };
         }
 
-        public static byte[] bytes(this Texture2D texture)
+        public static byte[] bytes(this Texture2D texture, int mipmapLevel)
         {
-            byte[] array = new byte[texture.width * texture.height * 4];
-            Color32[] colors = texture.GetPixels32();
+            Color32[] colors = texture.GetPixels32(mipmapLevel);
+            byte[] array = new byte[colors.Length * 4];
+            
             for (int i = 0; i < colors.Length; i++ )
             {
                 array[(i*4)] = colors[i].r;

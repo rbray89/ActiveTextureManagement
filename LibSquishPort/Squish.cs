@@ -156,7 +156,7 @@ namespace LibSquishPort
                 DecompressAlphaDxt5( rgba, alphaBock );
         }
                 */
-        int GetStorageRequirements(int width, int height, SquishFlags flags)
+        public static int GetStorageRequirements(int width, int height, SquishFlags flags)
         {
             // fix any bad flags
             flags = FixFlags(flags);

@@ -120,9 +120,9 @@ namespace ActiveTextureManagement
             ActiveTextureManagement.DBGLog("Rebuilding Cache... " + Texture.name);
 
             ActiveTextureManagement.DBGLog("Saving cache file " + cacheFile + ".imgcache");
-            Color32[] colors = cacheTexture.texture.GetPixels32();
-            
-            bool hasAlpha =TextureConverter.WriteTo(cacheTexture.texture, cacheFile + ".imgcache");
+            tex.Apply(mipmaps);
+            Color32[] colors = tex.GetPixels32();
+            bool hasAlpha =TextureConverter.WriteTo(tex, cacheFile + ".imgcache");
 
             String originalTextureFile = Texture.filename;
             String cacheConfigFile = cacheFile + ".tcache";
@@ -147,7 +147,7 @@ namespace ActiveTextureManagement
                 tex.Compress(true);
             }
             cacheTexture.isCompressed = compress;
-            tex.Apply(mipmaps, makeNotReadable);
+            tex.Apply(false, makeNotReadable);
             
             cacheTexture.isReadable = !makeNotReadable;
             

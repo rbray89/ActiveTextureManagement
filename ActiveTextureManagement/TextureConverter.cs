@@ -467,7 +467,7 @@ namespace ActiveTextureManagement
                 format = TextureFormat.DXT5;
             }
 
-            Texture2D newTex = new Texture2D(Texture.width, Texture.height, format, false);
+            Texture2D newTex = new Texture2D(Texture.width, Texture.height, format, mipmaps);
 
             newTex.LoadRawTextureData(imageBuffer);
             newTex.Apply(false, !Texture.readable);
@@ -540,19 +540,38 @@ namespace ActiveTextureManagement
             FileStream imgStream = new FileStream(cacheFile, FileMode.Create, FileAccess.Write);
             imgStream.Position = 0;
             //byte[] png = cacheTexture.EncodeToPNG();
-            byte[] img = cacheTexture.bytes();
+            byte[] img = cacheTexture.bytes(0);
             SquishFlags compression = SquishFlags.kDxt5;
-            int size = cacheTexture.width * cacheTexture.height;
+            
             bool hasAlpha = texHasAlpha(img);
             if(!hasAlpha)
             {
                 compression = SquishFlags.kDxt1;
-                size /= 2;
             }
-            squish.CompressImage(img, cacheTexture.width, cacheTexture.height, imageBuffer, compression | SquishFlags.kColourIterativeClusterFit | SquishFlags.kWeightColourByAlpha);
-            imgStream.Write(imageBuffer, 0, size);
+
+            for (int i = 0; i < 32; i++)
+            {
+                int width = Math.Max(1, cacheTexture.width>>i);
+                int height = Math.Max(1, cacheTexture.height >> i);
+                if(i != 0)
+                {
+                    img = cacheTexture.bytes(i);
+                }
+                int size = squish.GetStorageRequirements(width, height, compression);
+                squish.CompressImage(img, width, height, imageBuffer, compression | SquishFlags.kColourIterativeClusterFit | SquishFlags.kWeightColourByAlpha);
+                imgStream.Write(imageBuffer, 0, size);
+                if(width == 1 || height == 1)
+                {
+                    break;
+                }
+            }
             imgStream.Close();
             return hasAlpha;
+        }
+
+        static int index1(int v)
+        {
+            return (int)(sizeof(int)) * 8 - 1 - (32 - (Convert.ToString(v, 2).Length));
         }
 
         private static bool texHasAlpha(byte[] colors)
