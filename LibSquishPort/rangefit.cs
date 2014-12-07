@@ -36,6 +36,8 @@ namespace LibSquishPort
 	    Vector3 m_start;
 	    Vector3 m_end;
 	    float m_besterror;
+        static Vector3 grid = new Vector3(31.0f, 63.0f, 31.0f);
+        static Vector3 gridrcp = new Vector3(1.0f / 31.0f, 1.0f / 63.0f, 1.0f / 31.0f);
 
       public  RangeFit( ColourSet  colours, SquishFlags flags ) 
   : base( colours, flags )
@@ -92,8 +94,7 @@ namespace LibSquishPort
 	end = Vector3.Min( Vector3.one, Vector3.Max( Vector3.zero, end ) );
 
 	// clamp to the grid and save
-	Vector3  grid = new Vector3( 31.0f, 63.0f, 31.0f );
-	Vector3  gridrcp = new Vector3( 1.0f/31.0f, 1.0f/63.0f, 1.0f/31.0f );
+	
 	Vector3  half = Vector3.one*( 0.5f );
 	m_start = Vector3.Scale(math.Truncate( Vector3.Scale(grid,start) + half ),gridrcp);
 	m_end = Vector3.Scale(math.Truncate( Vector3.Scale(grid,end) + half ),gridrcp);

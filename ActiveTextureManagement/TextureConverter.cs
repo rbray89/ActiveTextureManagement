@@ -549,9 +549,9 @@ namespace ActiveTextureManagement
                 compression = SquishFlags.kDxt1;
             }
 
-            for (int i = 0; i < 32; i++)
+            for (int i = 0; i < cacheTexture.mipmapCount; i++)
             {
-                int width = Math.Max(1, cacheTexture.width>>i);
+                int width = Math.Max(1, cacheTexture.width >> i);
                 int height = Math.Max(1, cacheTexture.height >> i);
                 if(i != 0)
                 {
@@ -560,7 +560,7 @@ namespace ActiveTextureManagement
                 int size = squish.GetStorageRequirements(width, height, compression);
                 squish.CompressImage(img, width, height, imageBuffer, compression | SquishFlags.kColourIterativeClusterFit | SquishFlags.kWeightColourByAlpha);
                 imgStream.Write(imageBuffer, 0, size);
-                if(width == 1 || height == 1 || cacheTexture.mipmapCount == 1)
+                if(width == 1 || height == 1)
                 {
                     break;
                 }
@@ -568,11 +568,7 @@ namespace ActiveTextureManagement
             imgStream.Close();
             return hasAlpha;
         }
-
-        static int index1(int v)
-        {
-            return (int)(sizeof(int)) * 8 - 1 - (32 - (Convert.ToString(v, 2).Length));
-        }
+        
 
         private static bool texHasAlpha(byte[] colors)
         {

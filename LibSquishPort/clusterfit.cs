@@ -43,6 +43,8 @@ namespace LibSquishPort
         Vector4 m_xsum_wsum;
         Vector4 m_metric;
         Vector4 m_besterror;
+        static Vector4 grid = new Vector4(31.0f, 63.0f, 31.0f, 0);
+        static Vector4 gridrcp = new Vector4(1.0f / 31.0f, 1.0f / 63.0f, 1.0f / 31.0f, 0.0f);
 
         private static void swap<T>(ref T a, ref T b)
 {
@@ -144,12 +146,8 @@ public unsafe override void Compress3( byte* block )
 	// declare variables
 	int count = m_colours.GetCount();
 	Vector4  two = Vector4.one*( 2.0f );
-	Vector4  one = Vector4.one*( 1.0f );
 	Vector4  half_half2 = new Vector4( 0.5f, 0.5f, 0.5f, 0.25f );
-	Vector4  zero = Vector4.zero;
 	Vector4  half = Vector4.one*( 0.5f );
-	Vector4  grid = new Vector4( 31.0f, 63.0f, 31.0f, 0.0f );
-	Vector4  gridrcp = new Vector4( 1.0f/31.0f, 1.0f/63.0f, 1.0f/31.0f, 0.0f );
 
 	// prepare an ordering using the principle axis
 	ructOrdering( m_principle, 0 );
@@ -192,8 +190,8 @@ public unsafe override void Compress3( byte* block )
 				Vector4 b = Vector4.Scale( alphax_sum.NegativeMultiplySubtract( alphabeta_sum, Vector4.Scale(betax_sum,alpha2_sum) ), factor);
 
 				// clamp to the grid
-				a = Vector4.Min( one, Vector4.Max( zero, a ) );
-				b = Vector4.Min( one, Vector4.Max( zero, b ) );
+                a = Vector4.Min(Vector4.one, Vector4.Max(Vector4.zero, a));
+                b = Vector4.Min(Vector4.one, Vector4.Max(Vector4.zero, b));
 				a = Vector4.Scale(( grid.MultiplyAdd( a, half ) ).Truncate(),gridrcp);
 				b = Vector4.Scale(( grid.MultiplyAdd( b, half ) ).Truncate(),gridrcp);
 				
@@ -275,14 +273,10 @@ public unsafe override void Compress4( byte* block )
 	// declare variables
 	int  count = m_colours.GetCount();
 	Vector4  two = Vector4.one*( 2.0f );
-	Vector4  one = Vector4.one;
 	Vector4  onethird_onethird2 = new Vector4( 1.0f/3.0f, 1.0f/3.0f, 1.0f/3.0f, 1.0f/9.0f );
 	Vector4  twothirds_twothirds2 = new Vector4( 2.0f/3.0f, 2.0f/3.0f, 2.0f/3.0f, 4.0f/9.0f );
 	Vector4  twonineths = Vector4.one*( 2.0f/9.0f );
-	Vector4  zero = Vector4.zero;
 	Vector4  half = Vector4.one*( 0.5f );
-	Vector4  grid = new Vector4( 31.0f, 63.0f, 31.0f, 0.0f );
-	Vector4  gridrcp = new Vector4( 1.0f/31.0f, 1.0f/63.0f, 1.0f/31.0f, 0.0f );
 
 	// prepare an ordering using the principle axis
 	ructOrdering( m_principle, 0 );
@@ -329,8 +323,8 @@ public unsafe override void Compress4( byte* block )
 					Vector4 b = Vector4.Scale(alphax_sum.NegativeMultiplySubtract( alphabeta_sum, Vector4.Scale(betax_sum,alpha2_sum )),factor);
 
 					// clamp to the grid
-					a = Vector4.Min( one, Vector4.Max( zero, a ) );
-					b = Vector4.Min( one, Vector4.Max( zero, b ) );
+                    a = Vector4.Min(Vector4.one, Vector4.Max(Vector4.zero, a));
+                    b = Vector4.Min(Vector4.one, Vector4.Max(Vector4.zero, b));
 					a = Vector4.Scale(( grid.MultiplyAdd( a, half ) ).Truncate(),gridrcp);
 					b = Vector4.Scale(( grid.MultiplyAdd( b, half ) ).Truncate(),gridrcp);
 					
