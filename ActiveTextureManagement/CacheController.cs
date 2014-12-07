@@ -131,6 +131,7 @@ namespace ActiveTextureManagement
             tex.Apply(mipmaps);
             Color32[] colors = tex.GetPixels32();
             bool hasAlpha =TextureConverter.WriteTo(tex, cacheFile + ".imgcache");
+            compress = true;
 
             String originalTextureFile = Texture.filename;
             String cacheConfigFile = cacheFile + ".tcache";
