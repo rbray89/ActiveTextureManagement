@@ -48,19 +48,27 @@ namespace ActiveTextureManagement
                 {
                     
                     String cacheIsNormString = config.GetValue("is_normal");
+                    String cacheIsCompressed = config.GetValue("is_compressed");
                     String cacheWidthString = config.GetValue("width");
                     String cacheHeihtString = config.GetValue("height");
                     string hasAlphaString = config.GetValue("hasAlpha");
+                    string hasMipmapsString = config.GetValue("hasMipmaps");
                     bool cacheIsNorm = false;
                     int cacheWidth = 0;
                     int cacheHeight = 0;
                     bool hasAlpha = true;
+                    bool hasMipmaps = true;
+                    bool isCompressed = true;
                     bool.TryParse(cacheIsNormString, out cacheIsNorm);
+                    bool.TryParse(cacheIsCompressed, out isCompressed);
                     int.TryParse(cacheWidthString, out cacheWidth);
                     int.TryParse(cacheHeihtString, out cacheHeight);
                     bool.TryParse(hasAlphaString, out hasAlpha);
+                    bool.TryParse(hasAlphaString, out hasAlpha);
+                    bool.TryParse(hasMipmapsString, out hasMipmaps);
 
-                    if (cacheHash != hashString || cacheIsNorm != Texture.isNormalMap || Texture.resizeWidth != cacheWidth || Texture.resizeHeight != cacheHeight)
+                    //Need to add comparison here... || compress != isCompressed 
+                    if (cacheHash != hashString || mipmaps != hasMipmaps || cacheIsNorm != Texture.isNormalMap || Texture.resizeWidth != cacheWidth || Texture.resizeHeight != cacheHeight)
                     {
                         if (cacheHash != hashString)
                         {
@@ -89,7 +97,7 @@ namespace ActiveTextureManagement
                         Texture.readable = !makeNotReadable;
                         Texture.filename = cacheFile;
 
-                        return TextureConverter.DDSToTexture(Texture, mipmaps, cacheIsNorm, hasAlpha); ;
+                        return TextureConverter.DDSToTexture(Texture, hasMipmaps, isCompressed, hasAlpha); ;
                     }
                 }
                 else
@@ -136,9 +144,11 @@ namespace ActiveTextureManagement
             config.AddValue("orig_width", Texture.width.ToString()); ActiveTextureManagement.DBGLog("orig_width: " + Texture.width.ToString());
             config.AddValue("orig_height", Texture.height.ToString()); ActiveTextureManagement.DBGLog("orig_height: " + Texture.height.ToString());
             config.AddValue("is_normal", cacheTexture.isNormalMap.ToString()); ActiveTextureManagement.DBGLog("is_normal: " + cacheTexture.isNormalMap.ToString());
+            config.AddValue("is_compressed", compress); ActiveTextureManagement.DBGLog("is_compressed: " + compress);
             config.AddValue("width", Texture.resizeWidth.ToString()); ActiveTextureManagement.DBGLog("width: " + Texture.resizeWidth.ToString());
             config.AddValue("height", Texture.resizeHeight.ToString()); ActiveTextureManagement.DBGLog("height: " + Texture.resizeHeight.ToString());
             config.AddValue("hasAlpha", hasAlpha); ActiveTextureManagement.DBGLog("hasAlpha: " + hasAlpha.ToString());
+            config.AddValue("hasMipmaps", mipmaps); ActiveTextureManagement.DBGLog("hasMipmaps: " + hasAlpha.ToString());
             config.Save(cacheConfigFile);
             ActiveTextureManagement.DBGLog("Saved Config.");
 

@@ -452,7 +452,7 @@ namespace ActiveTextureManagement
             tex.Apply(mipmaps, false);
         }
 
-        public static TextureInfoWrapper DDSToTexture(TexInfo Texture, bool mipmaps, bool isNormalFormat, bool hasAlpha)
+        public static TextureInfoWrapper DDSToTexture(TexInfo Texture, bool mipmaps, bool isCompressed, bool hasAlpha)
         {
 
             TextureConverter.InitImageBuffer();
@@ -560,7 +560,7 @@ namespace ActiveTextureManagement
                 int size = squish.GetStorageRequirements(width, height, compression);
                 squish.CompressImage(img, width, height, imageBuffer, compression | SquishFlags.kColourIterativeClusterFit | SquishFlags.kWeightColourByAlpha);
                 imgStream.Write(imageBuffer, 0, size);
-                if(width == 1 || height == 1)
+                if(width == 1 || height == 1 || cacheTexture.mipmapCount == 1)
                 {
                     break;
                 }
