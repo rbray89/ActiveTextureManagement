@@ -470,10 +470,10 @@ namespace ActiveTextureManagement
             Texture2D newTex = new Texture2D(Texture.width, Texture.height, format, mipmaps);
 
             newTex.LoadRawTextureData(imageBuffer);
-            newTex.Apply(false, !Texture.readable);
+            newTex.Apply(false, Texture.makeNotReadable);
             newTex.name = Texture.name;
 
-            return new TextureInfoWrapper(newTex, Texture.isNormalMap, false, true);
+            return new TextureInfoWrapper(newTex, Texture.isNormalMap, !Texture.makeNotReadable, true);
         }
 
         public static void GetReadable(TexInfo Texture, bool mipmaps)

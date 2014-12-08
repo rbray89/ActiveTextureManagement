@@ -247,8 +247,8 @@ namespace ActiveTextureManagement
                 }
             }
             texture.SetScalingParams(scale, maxSize, minSize);
-
-            TextureInfoWrapper ret = CacheController.FetchCacheTexture(texture, compress, mipmaps, makeNotReadable && !readableList.Contains(texture.name));
+            texture.makeNotReadable = makeNotReadable && !readableList.Contains(texture.name);
+            TextureInfoWrapper ret = CacheController.FetchCacheTexture(texture, compress, mipmaps);
             ret.texture.filterMode = filterMode;
             return ret;
         }

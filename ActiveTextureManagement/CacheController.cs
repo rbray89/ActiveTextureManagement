@@ -14,7 +14,7 @@ namespace ActiveTextureManagement
         static String MD5String = "";
         static String LastFile = "";
 
-        public static TextureInfoWrapper FetchCacheTexture(TexInfo Texture, bool compress, bool mipmaps, bool makeNotReadable)
+        public static TextureInfoWrapper FetchCacheTexture(TexInfo Texture, bool compress, bool mipmaps)
         {
             String textureName = Texture.name;
             String originalTextureFile = KSPUtil.ApplicationRootPath + "GameData/" + textureName;
@@ -36,7 +36,7 @@ namespace ActiveTextureManagement
                 if (origWidthString == null || origHeightString == null ||
                     cacheHash == null || format == null)
                 {
-                    return RebuildCache(Texture, compress, mipmaps, makeNotReadable);
+                    return RebuildCache(Texture, compress, mipmaps);
                 }
 
                 originalTextureFile += format;
@@ -86,7 +86,7 @@ namespace ActiveTextureManagement
                         {
                             ActiveTextureManagement.DBGLog(Texture.resizeHeight + " != " + cacheHeight);
                         }
-                        return RebuildCache(Texture, compress, mipmaps, makeNotReadable);
+                        return RebuildCache(Texture, compress, mipmaps);
                     }
                     else
                     {
@@ -94,7 +94,6 @@ namespace ActiveTextureManagement
                         Texture.needsResize = false;
                         Texture.width = Texture.resizeWidth;
                         Texture.height = Texture.resizeHeight;
-                        Texture.readable = !makeNotReadable;
                         Texture.filename = cacheFile;
 
                         return TextureConverter.DDSToTexture(Texture, hasMipmaps, isCompressed, hasAlpha); ;
@@ -102,17 +101,17 @@ namespace ActiveTextureManagement
                 }
                 else
                 {
-                    return RebuildCache(Texture, compress, mipmaps, makeNotReadable);
+                    return RebuildCache(Texture, compress, mipmaps);
                 }
             }
             else
             {
-                return RebuildCache(Texture, compress, mipmaps, makeNotReadable);
+                return RebuildCache(Texture, compress, mipmaps);
             }
 
         }
 
-        private static TextureInfoWrapper RebuildCache(TexInfo Texture, bool compress, bool mipmaps, bool makeNotReadable)
+        private static TextureInfoWrapper RebuildCache(TexInfo Texture, bool compress, bool mipmaps)
         {
             Texture.loadOriginalFirst = true;
             ActiveTextureManagement.DBGLog("Loading texture...");
@@ -158,9 +157,9 @@ namespace ActiveTextureManagement
                 tex.Compress(true);
             }
             cacheTexture.isCompressed = compress;
-            tex.Apply(false, makeNotReadable);
+            tex.Apply(false, Texture.makeNotReadable);
             
-            cacheTexture.isReadable = !makeNotReadable;
+            cacheTexture.isReadable = !Texture.makeNotReadable;
             
             return cacheTexture;
         }
