@@ -96,6 +96,10 @@
       <Project>{6eaa2286-2b54-4445-b553-78b67f497ba9}</Project>
       <Name>LibSquishPort</Name>
     </ProjectReference>
+    <ProjectReference Include="..\NvidiaTextureTools\NvidiaTextureTools.csproj">
+      <Project>{ce10bc3f-c9a4-480a-9e67-fbaea76b2671}</Project>
+      <Name>NvidiaTextureTools</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

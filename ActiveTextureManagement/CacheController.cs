@@ -36,7 +36,7 @@ namespace ActiveTextureManagement
                 if (origWidthString == null || origHeightString == null ||
                     cacheHash == null || format == null)
                 {
-                    return RebuildCache(Texture, compress, mipmaps);
+                    return RebuildCache(Texture, compress, mipmaps );
                 }
 
                 originalTextureFile += format;

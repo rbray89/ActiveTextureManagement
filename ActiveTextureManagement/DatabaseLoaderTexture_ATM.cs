@@ -36,7 +36,9 @@ namespace ActiveTextureManagement
         static int config_min_size_normals = 128;
         static FilterMode config_filter_mode = FilterMode.Bilinear;
         static bool config_make_not_readable = false;
+        static bool useSquish = true;
 
+        public static bool UseSquish { get { return useSquish; } }
 
         public static void PopulateConfig()
         {
@@ -47,6 +49,11 @@ namespace ActiveTextureManagement
                 if (dbg != null)
                 {
                     ActiveTextureManagement.DBL_LOG = true;
+                }
+                String useNvidia = config.GetValue("USE_NVIDIA");
+                if (useNvidia != null)
+                {
+                    useSquish = false;
                 }
 
                 overrides = config.GetNode("OVERRIDES");

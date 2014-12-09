@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using NvidiaTextureTools;
 
 namespace ActiveTextureManagement
 {
@@ -473,7 +474,9 @@ namespace ActiveTextureManagement
             newTex.Apply(false, Texture.makeNotReadable);
             newTex.name = Texture.name;
 
-            return new TextureInfoWrapper(newTex, Texture.isNormalMap, !Texture.makeNotReadable, true);
+            TextureInfoWrapper newTexInfo = new TextureInfoWrapper(newTex, Texture.isNormalMap, !Texture.makeNotReadable, true);
+            newTexInfo.name = Texture.name;
+            return newTexInfo;
         }
 
         public static void GetReadable(TexInfo Texture, bool mipmaps)
@@ -542,11 +545,13 @@ namespace ActiveTextureManagement
             //byte[] png = cacheTexture.EncodeToPNG();
             byte[] img = cacheTexture.bytes(0);
             SquishFlags compression = SquishFlags.kDxt5;
-            
+            TextureFormat format = TextureFormat.DXT5;
+
             bool hasAlpha = texHasAlpha(img);
             if(!hasAlpha)
             {
                 compression = SquishFlags.kDxt1;
+                format = TextureFormat.DXT1;
             }
 
             for (int i = 0; i < cacheTexture.mipmapCount; i++)
@@ -558,7 +563,14 @@ namespace ActiveTextureManagement
                     img = cacheTexture.bytes(i);
                 }
                 int size = squish.GetStorageRequirements(width, height, compression);
-                squish.CompressImage(img, width, height, imageBuffer, compression | SquishFlags.kColourIterativeClusterFit | SquishFlags.kWeightColourByAlpha);
+                if (DatabaseLoaderTexture_ATM.UseSquish)
+                {
+                    squish.CompressImage(img, width, height, imageBuffer, compression | SquishFlags.kColourIterativeClusterFit | SquishFlags.kWeightColourByAlpha);
+                }
+                else 
+                { 
+                    TextureToolsDXT.GetDXT(cacheTexture, i, imageBuffer, format); 
+                }
                 imgStream.Write(imageBuffer, 0, size);
                 if(width == 1 || height == 1)
                 {
