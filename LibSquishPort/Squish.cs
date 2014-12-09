@@ -24,8 +24,10 @@
    -------------------------------------------------------------------------- */
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace LibSquishPort
 {
@@ -172,57 +174,134 @@ namespace LibSquishPort
             // fix any bad flags
             flags = FixFlags(flags);
 
+            // holds the handles to know which thread are free. 
+            // No more than 50 or Mono commplains.
+            // On my machine Environment.ProcessorCount give me a nice 98% CPU
+            UnityEngine.Debug.Log("Pcount" + Environment.ProcessorCount);
+            ManualResetEvent[] doneEvents = new ManualResetEvent[Environment.ProcessorCount];
+            for (int i = 0; i < doneEvents.Length; i++)
+            {
+                doneEvents[i] = new ManualResetEvent(true);
+            }
+
             // initialise the block output
             fixed (byte* pblocks = blocks, prgba = rgba)
             {
-                byte* targetBlock = (pblocks);
                 int bytesPerBlock = ((flags & SquishFlags.kDxt1) != 0) ? 8 : 16;
 
                 // loop over blocks
                 for (int y = 0; y < height; y += 4)
                 {
-                    for (int x = 0; x < width; x += 4)
-                    {
-                        // build the 4x4 block of pixels
-                        byte[] sourceRgba = new byte[16 * 4];
-                        fixed (byte* psourceRgba = sourceRgba)
-                        {
-                            byte* targetPixel = psourceRgba;
-                            int mask = 0;
-                            for (int py = 0; py < 4; ++py)
-                            {
-                                for (int px = 0; px < 4; ++px)
-                                {
-                                    // get the source pixel in the image
-                                    int sx = x + px;
-                                    int sy = y + py;
+                    int threadIdx = GetFreeThreadIdx(doneEvents);
+                    doneEvents[threadIdx] = new ManualResetEvent(false);
 
-                                    // enable if we're in the image
-                                    if (sx < width && sy < height)
-                                    {
-                                        // copy the rgba value
-                                        byte* sourcePixel = prgba + 4 * (width * sy + sx);
-                                        for (int i = 0; i < 4; ++i)
-                                            *targetPixel++ = *sourcePixel++;
-
-                                        // enable this pixel
-                                        mask |= (1 << (4 * py + px));
-                                    }
-                                    else
-                                    {
-                                        // skip this pixel as its outside the image
-                                        targetPixel += 4;
-                                    }
-                                }
-                            }
-
-                            // compress it into the output
-                            CompressMasked(sourceRgba, mask, targetBlock, flags);
-                        }
-                        // advance
-                        targetBlock += bytesPerBlock;
-                    }
+                    byte* targetBlock = (pblocks) + bytesPerBlock * (y >> 2);
+                    CompressImageBlockLineArgs args = new CompressImageBlockLineArgs(width, height, flags, y, prgba, targetBlock, bytesPerBlock, doneEvents[threadIdx]);
+                    // To debug un comment this line and comment the next one
+                    // Threads catch the exceptions (add a try catch ? )
+                    //CompressImageBlockLineThread(args);
+                    ThreadPool.QueueUserWorkItem(CompressImageBlockLineThread, args);
                 }
+                WaitHandle.WaitAll(doneEvents);
+            }
+        }
+
+        private static int GetFreeThreadIdx(ManualResetEvent[] doneEvents)
+        {
+            for (int i = 0; i < doneEvents.Length; i++)
+            {
+                if (doneEvents[i].WaitOne(0))
+                {
+                    return i;
+                }
+            }
+            return WaitHandle.WaitAny(doneEvents);
+        }
+        
+        private unsafe class CompressImageBlockLineArgs
+        {
+
+            public int width;
+            public int height;
+            public SquishFlags flags;
+            public int y;
+            public byte* prgba;
+            public byte* targetBlock;
+            public int bytesPerBlock;
+            public ManualResetEvent doneEvent;
+
+            public CompressImageBlockLineArgs(
+                int width,
+                int height,
+                SquishFlags flags,
+                int y,
+                byte* prgba,
+                byte* targetBlock,
+                int bytesPerBlock,
+                ManualResetEvent doneEvent)
+            {
+                this.width = width;
+                this.height = height;
+                this.flags = flags;
+                this.y = y;
+                this.prgba = prgba;
+                this.targetBlock = targetBlock;
+                this.bytesPerBlock = bytesPerBlock;
+                this.doneEvent = doneEvent;
+            }
+        }
+
+        private static unsafe void CompressImageBlockLineThread(Object obj)
+        {
+            CompressImageBlockLineArgs args = (CompressImageBlockLineArgs)obj;
+            CompressImageBlockLine(args.width, args.height, args.flags, args.y, args.prgba, args.targetBlock, args.bytesPerBlock);
+            args.doneEvent.Set();
+        }
+
+        private static unsafe void CompressImageBlockLine(int width, int height, SquishFlags flags, int y, byte* prgba, byte* targetBlock, int bytesPerBlock)
+        {
+            for (int x = 0; x < width; x += 4)
+            {
+                // build the 4x4 block of pixels
+                byte[] sourceRgba = new byte[16 * 4];
+                fixed (byte* psourceRgba = sourceRgba)
+                {
+                    byte* targetPixel = psourceRgba;
+                    int mask = 0;
+                    for (int py = 0; py < 4; ++py)
+                    {
+                        for (int px = 0; px < 4; ++px)
+                        {
+                            // get the source pixel in the image
+                            int sx = x + px;
+                            int sy = y + py;
+
+                            // enable if we're in the image
+                            if (sx < width && sy < height)
+                            {
+                                // copy the rgba value
+                                byte* sourcePixel = prgba + 4 * (width * sy + sx);
+                                for (int i = 0; i < 4; ++i)
+                                {
+                                    *targetPixel++ = *sourcePixel++;
+                                }
+
+                                // enable this pixel
+                                mask |= (1 << (4 * py + px));
+                            }
+                            else
+                            {
+                                // skip this pixel as its outside the image
+                                targetPixel += 4;
+                            }
+                        }
+                    }
+
+                    // compress it into the output
+                    CompressMasked(sourceRgba, mask, targetBlock, flags);
+                }
+                // advance
+                targetBlock += bytesPerBlock;
             }
         }
 
