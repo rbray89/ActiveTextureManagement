@@ -12,7 +12,7 @@ namespace ActiveTextureManagement
     class TextureConverter
     {
 
-        const int MAX_IMAGE_SIZE = 4048 * 4048 * 5;
+        const int MAX_IMAGE_SIZE = 8096 * 8096 * 3;
         static byte[] imageBuffer = null;
 
         public static void InitImageBuffer()
@@ -463,9 +463,17 @@ namespace ActiveTextureManagement
             imgStream.Close();
 
             TextureFormat format = TextureFormat.DXT1;
-            if(hasAlpha)
+            if(hasAlpha && isCompressed)
             {
                 format = TextureFormat.DXT5;
+            }
+            else if(hasAlpha)
+            {
+                format = TextureFormat.RGBA32;
+            }
+            else if(!isCompressed)
+            {
+                format = TextureFormat.RGB24;
             }
 
             Texture2D newTex = new Texture2D(Texture.width, Texture.height, format, mipmaps);
@@ -474,7 +482,7 @@ namespace ActiveTextureManagement
             newTex.Apply(false, Texture.makeNotReadable);
             newTex.name = Texture.name;
 
-            TextureInfoWrapper newTexInfo = new TextureInfoWrapper(newTex, Texture.isNormalMap, !Texture.makeNotReadable, true);
+            TextureInfoWrapper newTexInfo = new TextureInfoWrapper(newTex, Texture.isNormalMap, !Texture.makeNotReadable, isCompressed);
             newTexInfo.name = Texture.name;
             return newTexInfo;
         }
@@ -532,7 +540,7 @@ namespace ActiveTextureManagement
             }
         }
 
-        internal static bool WriteTo(Texture2D cacheTexture, string cacheFile)
+        internal static bool WriteTo(Texture2D cacheTexture, string cacheFile, bool compress)
         {
             String directory = Path.GetDirectoryName(cacheFile + ".none");
             if (File.Exists(directory))
@@ -558,20 +566,28 @@ namespace ActiveTextureManagement
             {
                 int width = Math.Max(1, cacheTexture.width >> i);
                 int height = Math.Max(1, cacheTexture.height >> i);
-                if(i != 0)
+                if (compress)
                 {
-                    img = cacheTexture.bytes(i);
+                    if (i != 0)
+                    {
+                        img = cacheTexture.bytes(i);
+                    }
+                    int size = squish.GetStorageRequirements(width, height, compression);
+                    if (DatabaseLoaderTexture_ATM.UseSquish)
+                    {
+                        squish.CompressImage(img, width, height, imageBuffer, compression | SquishFlags.kColourIterativeClusterFit | SquishFlags.kWeightColourByAlpha);
+                    }
+                    else
+                    {
+                        TextureToolsDXT.GetDXT(cacheTexture, i, imageBuffer, format);
+                    }
+                    imgStream.Write(imageBuffer, 0, size);
                 }
-                int size = squish.GetStorageRequirements(width, height, compression);
-                if (DatabaseLoaderTexture_ATM.UseSquish)
+                else
                 {
-                    squish.CompressImage(img, width, height, imageBuffer, compression | SquishFlags.kColourIterativeClusterFit | SquishFlags.kWeightColourByAlpha);
+                    img = cacheTexture.bytes(i, hasAlpha);
+                    imgStream.Write(img, 0, img.Length);
                 }
-                else 
-                { 
-                    TextureToolsDXT.GetDXT(cacheTexture, i, imageBuffer, format); 
-                }
-                imgStream.Write(imageBuffer, 0, size);
                 if(width == 1 || height == 1)
                 {
                     break;

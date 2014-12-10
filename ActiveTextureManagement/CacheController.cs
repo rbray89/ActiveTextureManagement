@@ -67,8 +67,7 @@ namespace ActiveTextureManagement
                     bool.TryParse(hasAlphaString, out hasAlpha);
                     bool.TryParse(hasMipmapsString, out hasMipmaps);
 
-                    //Need to add comparison here... || compress != isCompressed 
-                    if (cacheHash != hashString || mipmaps != hasMipmaps || cacheIsNorm != Texture.isNormalMap || Texture.resizeWidth != cacheWidth || Texture.resizeHeight != cacheHeight)
+                    if (cacheHash != hashString || compress != isCompressed || mipmaps != hasMipmaps || cacheIsNorm != Texture.isNormalMap || Texture.resizeWidth != cacheWidth || Texture.resizeHeight != cacheHeight)
                     {
                         if (cacheHash != hashString)
                         {
@@ -129,8 +128,7 @@ namespace ActiveTextureManagement
             ActiveTextureManagement.DBGLog("Saving cache file " + cacheFile + ".imgcache");
             tex.Apply(mipmaps);
             Color32[] colors = tex.GetPixels32();
-            bool hasAlpha =TextureConverter.WriteTo(tex, cacheFile + ".imgcache");
-            compress = true;
+            bool hasAlpha =TextureConverter.WriteTo(tex, cacheFile + ".imgcache", compress);
 
             String originalTextureFile = Texture.filename;
             String cacheConfigFile = cacheFile + ".tcache";
