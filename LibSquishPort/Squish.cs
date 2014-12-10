@@ -24,7 +24,6 @@
    -------------------------------------------------------------------------- */
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -188,6 +187,7 @@ namespace LibSquishPort
             fixed (byte* pblocks = blocks, prgba = rgba)
             {
                 int bytesPerBlock = ((flags & SquishFlags.kDxt1) != 0) ? 8 : 16;
+                byte* targetBlock = pblocks;
 
                 // loop over blocks
                 for (int y = 0; y < height; y += 4)
@@ -195,8 +195,9 @@ namespace LibSquishPort
                     int threadIdx = GetFreeThreadIdx(doneEvents);
                     doneEvents[threadIdx] = new ManualResetEvent(false);
 
-                    byte* targetBlock = (pblocks) + bytesPerBlock * (y >> 2);
                     CompressImageBlockLineArgs args = new CompressImageBlockLineArgs(width, height, flags, y, prgba, targetBlock, bytesPerBlock, doneEvents[threadIdx]);
+                    targetBlock += bytesPerBlock * ((width >> 2) + ((width & 0x3) != 0 ? 1 : 0));
+
                     // To debug un comment this line and comment the next one
                     // Threads catch the exceptions (add a try catch ? )
                     //CompressImageBlockLineThread(args);
@@ -258,8 +259,9 @@ namespace LibSquishPort
             args.doneEvent.Set();
         }
 
-        private static unsafe void CompressImageBlockLine(int width, int height, SquishFlags flags, int y, byte* prgba, byte* targetBlock, int bytesPerBlock)
+        private static unsafe void CompressImageBlockLine(int width, int height, SquishFlags flags, int y, byte* prgba, byte* targetBlockPtr, int bytesPerBlock)
         {
+            byte* targetBlock = targetBlockPtr;
             for (int x = 0; x < width; x += 4)
             {
                 // build the 4x4 block of pixels

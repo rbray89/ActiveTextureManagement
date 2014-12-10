@@ -6,6 +6,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActiveTextureManagement", "ActiveTextureManagement\ActiveTextureManagement.csproj", "{838C3D0D-94A2-4D2A-9DDE-0C0D551309AD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibSquishPort", "LibSquishPort\LibSquishPort.csproj", "{6EAA2286-2B54-4445-B553-78B67F497BA9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{CE10BC3F-C9A4-480A-9E67-FBAEA76B2671} = {CE10BC3F-C9A4-480A-9E67-FBAEA76B2671}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NvidiaTextureTools", "NvidiaTextureTools\NvidiaTextureTools.csproj", "{CE10BC3F-C9A4-480A-9E67-FBAEA76B2671}"
 EndProject
