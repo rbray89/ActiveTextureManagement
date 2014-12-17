@@ -175,20 +175,20 @@ namespace ActiveTextureManagement
             
             string overrideName = overridesList.Find(n => texture.name.Length == Regex.Match(texture.name, n).Length);
             bool mipmaps = true;
-            bool compress = texture.isNormalMap ? false : true;
+            bool compress = texture.isNormalMap ? DatabaseLoaderTexture_ATM.config_compress :
+                                                  DatabaseLoaderTexture_ATM.config_compress_normals;
             int scale = 1;
             int maxSize = 0;
             int minSize = 64;
             FilterMode filterMode = FilterMode.Bilinear;
             bool makeNotReadable = false;
 
-            if (foldersList.Exists(n => texture.name.StartsWith(n)))
+            if (foldersList.Exists(n => Regex.Match(texture.name, n).Success))
             {
 
                 if (texture.isNormalMap)
                 {
                     mipmaps = DatabaseLoaderTexture_ATM.config_mipmaps_normals;
-                    compress = DatabaseLoaderTexture_ATM.config_compress_normals;
                     scale = DatabaseLoaderTexture_ATM.config_scale_normals;
                     maxSize = DatabaseLoaderTexture_ATM.config_max_size_normals;
                     minSize = DatabaseLoaderTexture_ATM.config_min_size_normals;
@@ -196,7 +196,6 @@ namespace ActiveTextureManagement
                 else
                 {
                     mipmaps = DatabaseLoaderTexture_ATM.config_mipmaps;
-                    compress = DatabaseLoaderTexture_ATM.config_compress;
                     scale = DatabaseLoaderTexture_ATM.config_scale;
                     maxSize = DatabaseLoaderTexture_ATM.config_max_size;
                     minSize = DatabaseLoaderTexture_ATM.config_min_size;

@@ -176,7 +176,6 @@ namespace LibSquishPort
             // holds the handles to know which thread are free. 
             // No more than 50 or Mono commplains.
             // On my machine Environment.ProcessorCount give me a nice 98% CPU
-            UnityEngine.Debug.Log("Pcount" + Environment.ProcessorCount);
             ManualResetEvent[] doneEvents = new ManualResetEvent[Environment.ProcessorCount];
             for (int i = 0; i < doneEvents.Length; i++)
             {
