@@ -10,7 +10,7 @@ using UnityEngine;
 namespace ActiveTextureManagement
 {
 
-    
+
 
     [DatabaseLoaderAttrib(new string[] { "png", "tga", "mbm", "jpg", "jpeg", "truecolor" })]
     public class DatabaseLoaderTexture_ATM : DatabaseLoader<GameDatabase.TextureInfo>

@@ -13,6 +13,8 @@ namespace ActiveTextureManagement
     {
         static String MD5String = "";
         static String LastFile = "";
+        static Dictionary<String, TextureInfoWrapper> TextureHashTable = new Dictionary<string, TextureInfoWrapper>();
+        static String[] Extensions = { ".png", ".tga", ".mbm", ".jpg", ".jpeg", ".truecolor" };
 
         public static TextureInfoWrapper FetchCacheTexture(TexInfo Texture, bool compress, bool mipmaps)
         {
@@ -21,6 +23,22 @@ namespace ActiveTextureManagement
             String cacheFile = KSPUtil.ApplicationRootPath + "GameData/ActiveTextureManagement/textureCache/" + textureName;
             String cacheConfigFile = cacheFile + ".tcache";
             cacheFile += ".imgcache";
+
+            String hashString = GetMD5String(originalTextureFile);
+            if (TextureHashTable.ContainsKey(hashString))
+            {
+                ActiveTextureManagement.DBGLog("hash triggered... " + textureName);
+                TextureInfoWrapper tex = TextureHashTable[hashString];
+                if (tex.name != textureName)
+                {
+                    TextureInfoWrapper cacheTexInfo = new TextureInfoWrapper(tex.texture, tex.isNormalMap, tex.isReadable, tex.isCompressed);
+                    cacheTexInfo.name = textureName;
+                    ActiveTextureManagement.DBGLog("Re-using from hash dictionary... " + textureName+" is a duplicate of "+tex.name);
+
+                    return cacheTexInfo;
+                }
+            }
+            
             if (File.Exists(cacheConfigFile))
             {
                 ConfigNode config = ConfigNode.Load(cacheConfigFile);
@@ -39,9 +57,8 @@ namespace ActiveTextureManagement
                     return RebuildCache(Texture, compress, mipmaps );
                 }
 
-                originalTextureFile += format;
-                String hashString = GetMD5String(originalTextureFile);
 
+                originalTextureFile += format;
                 Texture.Resize(origWidth, origHeight);
 
                 if (format != null && File.Exists(originalTextureFile) && File.Exists(cacheFile))
@@ -63,7 +80,6 @@ namespace ActiveTextureManagement
                     bool.TryParse(cacheIsCompressed, out isCompressed);
                     int.TryParse(cacheWidthString, out cacheWidth);
                     int.TryParse(cacheHeihtString, out cacheHeight);
-                    bool.TryParse(hasAlphaString, out hasAlpha);
                     bool.TryParse(hasAlphaString, out hasAlpha);
                     bool.TryParse(hasMipmapsString, out hasMipmaps);
 
@@ -94,8 +110,17 @@ namespace ActiveTextureManagement
                         Texture.width = Texture.resizeWidth;
                         Texture.height = Texture.resizeHeight;
                         Texture.filename = cacheFile;
+                        TextureInfoWrapper tex = TextureConverter.DDSToTexture(Texture, hasMipmaps, isCompressed, hasAlpha);
+                        if (TextureHashTable.ContainsKey(hashString))
+                        {
+                            TextureHashTable[hashString] = tex;
+                        }
+                        else
+                        {
+                            TextureHashTable.Add(hashString, tex);
+                        }
 
-                        return TextureConverter.DDSToTexture(Texture, hasMipmaps, isCompressed, hasAlpha); ;
+                        return tex;
                     }
                 }
                 else
@@ -126,7 +151,7 @@ namespace ActiveTextureManagement
             ActiveTextureManagement.DBGLog("Rebuilding Cache... " + Texture.name);
 
             ActiveTextureManagement.DBGLog("Saving cache file " + cacheFile + ".imgcache");
-            tex.Apply(mipmaps);
+
             Color32[] colors = tex.GetPixels32();
             bool hasAlpha =TextureConverter.WriteTo(tex, cacheFile + ".imgcache", compress);
 
@@ -168,20 +193,21 @@ namespace ActiveTextureManagement
             {
                 return MD5String;
             }
-            if (File.Exists(file))
+            MD5String = null;
+            foreach (String extension in Extensions)
             {
-                FileStream stream = File.OpenRead(file);
-                MD5 md5 = MD5.Create();
-                byte[] hash = md5.ComputeHash(stream);
-                stream.Close();
-                MD5String = BitConverter.ToString(hash);
-                LastFile = file;
-                return MD5String;
+                if (File.Exists(file + extension))
+                {
+                    FileStream stream = File.OpenRead(file + extension);
+                    MD5 md5 = MD5.Create();
+                    byte[] hash = md5.ComputeHash(stream);
+                    stream.Close();
+                    MD5String = BitConverter.ToString(hash);
+                    LastFile = file;
+                    return MD5String;
+                }
             }
-            else
-            {
-                return null;
-            }
+            return MD5String;
         }
 
         public static int MemorySaved(int originalWidth, int originalHeight, TextureFormat originalFormat, bool originalMipmaps, GameDatabase.TextureInfo Texture)
