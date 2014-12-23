@@ -54,7 +54,7 @@ namespace ActiveTextureManagement
                 if (origWidthString == null || origHeightString == null ||
                     cacheHash == null || format == null)
                 {
-                    return RebuildCache(Texture, compress, mipmaps );
+                    return RebuildCache(Texture, compress, mipmaps, hashString );
                 }
 
 
@@ -101,7 +101,7 @@ namespace ActiveTextureManagement
                         {
                             ActiveTextureManagement.DBGLog(Texture.resizeHeight + " != " + cacheHeight);
                         }
-                        return RebuildCache(Texture, compress, mipmaps);
+                        return RebuildCache(Texture, compress, mipmaps, hashString);
                     }
                     else
                     {
@@ -125,17 +125,17 @@ namespace ActiveTextureManagement
                 }
                 else
                 {
-                    return RebuildCache(Texture, compress, mipmaps);
+                    return RebuildCache(Texture, compress, mipmaps, hashString);
                 }
             }
             else
             {
-                return RebuildCache(Texture, compress, mipmaps);
+                return RebuildCache(Texture, compress, mipmaps, hashString);
             }
 
         }
 
-        private static TextureInfoWrapper RebuildCache(TexInfo Texture, bool compress, bool mipmaps)
+        private static TextureInfoWrapper RebuildCache(TexInfo Texture, bool compress, bool mipmaps, string hashString)
         {
             Texture.loadOriginalFirst = true;
             ActiveTextureManagement.DBGLog("Loading texture...");
@@ -159,7 +159,6 @@ namespace ActiveTextureManagement
             String cacheConfigFile = cacheFile + ".tcache";
             ActiveTextureManagement.DBGLog("Created Config for" + originalTextureFile);
 
-            String hashString = GetMD5String(originalTextureFile);
 
             ConfigNode config = new ConfigNode();
             config.AddValue("md5", hashString); ActiveTextureManagement.DBGLog("md5: " + hashString);
