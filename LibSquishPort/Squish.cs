@@ -168,7 +168,7 @@ namespace LibSquishPort
             return blockcount * blocksize;
         }
 
-        public static unsafe void CompressImage(byte[] rgba, int width, int height, byte[] blocks, SquishFlags flags)
+        public static unsafe void CompressImage(byte[] rgba, int width, int height, byte[] blocks, SquishFlags flags, bool waitOnDone)
         {
             // fix any bad flags
             flags = FixFlags(flags);
@@ -200,6 +200,10 @@ namespace LibSquishPort
                     // To debug un comment this line and comment the next one
                     // Threads catch the exceptions (add a try catch ? )
                     //CompressImageBlockLineThread(args);
+                    if (waitOnDone && y > (4*Environment.ProcessorCount))
+                    {
+                        WaitHandle.WaitAny(doneEvents);
+                    }
                     ThreadPool.QueueUserWorkItem(CompressImageBlockLineThread, args);
                 }
                 WaitHandle.WaitAll(doneEvents);

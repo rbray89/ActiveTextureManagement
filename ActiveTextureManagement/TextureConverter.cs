@@ -575,7 +575,7 @@ namespace ActiveTextureManagement
                     int size = squish.GetStorageRequirements(width, height, compression);
                     if (DatabaseLoaderTexture_ATM.UseSquish)
                     {
-                        squish.CompressImage(img, width, height, imageBuffer, compression | SquishFlags.kColourIterativeClusterFit | SquishFlags.kWeightColourByAlpha);
+                        squish.CompressImage(img, width, height, imageBuffer, compression | SquishFlags.kColourIterativeClusterFit | SquishFlags.kWeightColourByAlpha, DatabaseLoaderTexture_ATM.WaitOnDone);
                     }
                     else
                     {

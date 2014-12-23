@@ -37,8 +37,10 @@ namespace ActiveTextureManagement
         static FilterMode config_filter_mode = FilterMode.Bilinear;
         static bool config_make_not_readable = false;
         static bool useSquish = true;
+        static bool waitOnDone = false;
 
         public static bool UseSquish { get { return useSquish; } }
+        public static bool WaitOnDone { get { return waitOnDone; } }
 
         public static void PopulateConfig()
         {
@@ -56,6 +58,11 @@ namespace ActiveTextureManagement
                     useSquish = false;
                 }
 
+                String wait = config.GetValue("WAIT");
+                if (wait != null)
+                {
+                    waitOnDone = true;
+                }
                 overrides = config.GetNode("OVERRIDES");
                 ConfigNode folders = config.GetNode("FOLDERS");
                 ConfigNode normals = config.GetNode("NORMAL_LIST");
