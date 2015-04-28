@@ -292,7 +292,7 @@ namespace ActiveTextureManagement
 
         public override IEnumerator Load(UrlDir.UrlFile urlFile, FileInfo file)
         {
-            TexInfo t = new TexInfo(urlFile.url);
+            TexInfo t = new TexInfo(urlFile);
             GameDatabase.TextureInfo texture = UpdateTexture(t);
             obj = texture;
             successful = true;

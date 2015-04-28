@@ -8,8 +8,8 @@ namespace ActiveTextureManagement
 {
     public class TextureInfoWrapper : GameDatabase.TextureInfo
     {
-        public TextureInfoWrapper(UnityEngine.Texture2D newTex, bool nrmMap, bool readable, bool compress)
-            : base(newTex, nrmMap, readable, compress)
+        public TextureInfoWrapper(UrlDir.UrlFile file, UnityEngine.Texture2D newTex, bool nrmMap, bool readable, bool compress)
+            : base(file, newTex, nrmMap, readable, compress)
         {
 
         }

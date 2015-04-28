@@ -453,7 +453,7 @@ namespace ActiveTextureManagement
             tex.Apply(mipmaps, false);
         }
 
-        public static TextureInfoWrapper DDSToTexture(TexInfo Texture, bool mipmaps, bool isCompressed, bool hasAlpha)
+        public static TextureInfoWrapper DDSToTexture(UrlDir.UrlFile file, TexInfo Texture, bool mipmaps, bool isCompressed, bool hasAlpha)
         {
 
             TextureConverter.InitImageBuffer();
@@ -482,7 +482,7 @@ namespace ActiveTextureManagement
             newTex.Apply(false, Texture.makeNotReadable);
             newTex.name = Texture.name;
 
-            TextureInfoWrapper newTexInfo = new TextureInfoWrapper(newTex, Texture.isNormalMap, !Texture.makeNotReadable, isCompressed);
+            TextureInfoWrapper newTexInfo = new TextureInfoWrapper(file, newTex, Texture.isNormalMap, !Texture.makeNotReadable, isCompressed);
             newTexInfo.name = Texture.name;
             return newTexInfo;
         }
@@ -507,7 +507,7 @@ namespace ActiveTextureManagement
                     name = Texture.name;
                 }
 
-                TextureInfoWrapper newTexture = new TextureInfoWrapper(tex, Texture.isNormalMap, true, false);
+                TextureInfoWrapper newTexture = new TextureInfoWrapper(Texture.file, tex, Texture.isNormalMap, true, false);
                 Texture.texture = newTexture;
                 newTexture.name = Texture.name;
                 if (File.Exists(pngPath))

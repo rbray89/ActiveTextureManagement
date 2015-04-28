@@ -106,7 +106,7 @@
     <PostBuildEvent>xcopy  $(TargetFileName) "$(SolutionDir)Pack\GameData\ActiveTextureManagement\Plugins\" /e /y /i /r
 xcopy "$(SolutionDir)Content\aggressive\GameData\*" "$(SolutionDir)Pack\GameData\"  /e /y /i /r
 xcopy "$(SolutionDir)Content\common\GameData\*" "$(SolutionDir)Pack\GameData"  /e /y /i /r
-xcopy "$(SolutionDir)Pack\GameData\*" "C:\Users\Ryan\Documents\ksp\ksp-$(PlatformName)-0-90\GameData" /e /y /i /r
+xcopy "$(SolutionDir)Pack\GameData\*" "C:\Users\Ryan\Documents\ksp\ksp-$(PlatformName)-1-0-0\GameData" /e /y /i /r
 7za a -tzip "$(SolutionDir)$(PlatformName)-Aggressive-Release.zip" "$(SolutionDir)Pack\GameData"
 xcopy "$(SolutionDir)Content\basic\GameData\*" "$(SolutionDir)Pack\GameData"  /e /y /i /r
 7za a -tzip "$(SolutionDir)$(PlatformName)-Basic-Release.zip" "$(SolutionDir)Pack\GameData"</PostBuildEvent>

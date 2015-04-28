@@ -31,7 +31,7 @@ namespace ActiveTextureManagement
                 TextureInfoWrapper tex = TextureHashTable[hashString];
                 if (tex.name != textureName)
                 {
-                    TextureInfoWrapper cacheTexInfo = new TextureInfoWrapper(tex.texture, tex.isNormalMap, tex.isReadable, tex.isCompressed);
+                    TextureInfoWrapper cacheTexInfo = new TextureInfoWrapper(Texture.file, tex.texture, tex.isNormalMap, tex.isReadable, tex.isCompressed);
                     cacheTexInfo.name = textureName;
                     ActiveTextureManagement.DBGLog("Re-using from hash dictionary... " + textureName+" is a duplicate of "+tex.name);
 
@@ -110,7 +110,7 @@ namespace ActiveTextureManagement
                         Texture.width = Texture.resizeWidth;
                         Texture.height = Texture.resizeHeight;
                         Texture.filename = cacheFile;
-                        TextureInfoWrapper tex = TextureConverter.DDSToTexture(Texture, hasMipmaps, isCompressed, hasAlpha);
+                        TextureInfoWrapper tex = TextureConverter.DDSToTexture(Texture.file, Texture, hasMipmaps, isCompressed, hasAlpha);
                         if (TextureHashTable.ContainsKey(hashString))
                         {
                             TextureHashTable[hashString] = tex;

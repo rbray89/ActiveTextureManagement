@@ -12,6 +12,7 @@ namespace ActiveTextureManagement
 {
     public class TexInfo
     {
+        public UrlDir.UrlFile file;
         public string name;
         public int width;
         public int height;
@@ -29,9 +30,10 @@ namespace ActiveTextureManagement
         public bool needsResize;
         public bool makeNotReadable;
 
-        public TexInfo(string name)
+        public TexInfo(UrlDir.UrlFile file)
         {
-            this.name = name;
+            this.file = file;
+            this.name = file.url;
             this.isNormalMap = DatabaseLoaderTexture_ATM.IsNormal(name);
             this.width = 1;
             this.height = 1;
