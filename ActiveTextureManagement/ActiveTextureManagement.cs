@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -91,18 +92,18 @@ namespace ActiveTextureManagement
     [KSPAddon(KSPAddon.Startup.EveryScene, false)]
     public class ActiveTextureManagement : MonoBehaviour
     {
-        static bool Compressed = false;
-        static int LastTextureIndex = -1;
-        static int gcCount = 0;
-        static long memorySaved = 0;
+        private static bool Compressed = false;
+        private static int LastTextureIndex = -1;
+        private static int gcCount = 0;
+        private static long memorySaved = 0;
         public static bool DBL_LOG = false;
-        
-        const int GC_COUNT_TRIGGER = 20;
-        
-        
-        static Dictionary<String, long> folderBytesSaved = new Dictionary<string, long>();
 
-        static List<String> foldersExList = new List<string>();
+        private const int GC_COUNT_TRIGGER = 20;
+
+
+        private static Dictionary<String, long> folderBytesSaved = new Dictionary<string, long>();
+
+        private static List<String> foldersExList = new List<string>();
 
         protected void Start()
         {
@@ -115,8 +116,8 @@ namespace ActiveTextureManagement
             {
                 Update();
                 Compressed = true;
-                
-                foreach(GameDatabase.TextureInfo Texture in GameDatabase.Instance.databaseTexture)
+
+                foreach (GameDatabase.TextureInfo Texture in GameDatabase.Instance.databaseTexture)
                 {
                     Texture2D texture = Texture.texture;
                     Log("--------------------------------------------------------");
@@ -144,9 +145,13 @@ namespace ActiveTextureManagement
             }
         }
 
+        private static readonly ReadOnlyCollection<string> stockLoaders = new ReadOnlyCollection<string>(new[]
+        {
+            "DatabaseLoaderTexture_JPEG", "DatabaseLoaderTexture_MBM", "DatabaseLoaderTexture_PNG", "DatabaseLoaderTexture_TGA", "DatabaseLoaderTexture_TRUECOLOR"
+        });
+
         private void SetupLoaders()
         {
-
             // Get the list where the Texture DatabaseLoader are stored
             Type gdType = typeof(GameDatabase);
             List<DatabaseLoader<GameDatabase.TextureInfo>> textureLoaders =
@@ -156,7 +161,7 @@ namespace ActiveTextureManagement
 
             foreach (var textureLoader in textureLoaders)
             {
-                if (textureLoader.GetType().Name != "DatabaseLoaderTexture_ATM")
+                if (stockLoaders.Contains(textureLoader.GetType().Name))
                 {
                     Log("Disabling " + textureLoader.GetType().Name);
                     textureLoader.extensions.RemoveAll(i => DatabaseLoaderTexture_ATM.ExtensionList.Contains(i));
